@@ -8,6 +8,9 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 from .config import Config
 from .database import get_db
+from .validation import (
+    validate_username, validate_email, validate_password, ValidationError,
+)
 
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/api/auth")
@@ -51,16 +54,12 @@ def register():
     email = (data.get("email") or "").strip().lower()
     password = data.get("password") or ""
 
-    if not username or not email or not password:
-        return jsonify({"error": "username, email, password required"}), 400
-    if len(username) < 3:
-        return jsonify({"error": "Username must be at least 3 characters"}), 400
-    if "@" not in email:
-        return jsonify({"error": "Invalid email"}), 400
-    if len(password) < Config.MIN_PASSWORD_LENGTH:
-        return jsonify({
-            "error": f"Password must be at least {Config.MIN_PASSWORD_LENGTH} characters"
-        }), 400
+    try:
+        username = validate_username(username)
+        email = validate_email(email)
+        password = validate_password(password, Config.MIN_PASSWORD_LENGTH)
+    except ValidationError as e:
+        return jsonify({"error": str(e)}), 400
 
     with get_db() as conn:
         existing = conn.execute(

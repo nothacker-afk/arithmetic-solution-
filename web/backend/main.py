@@ -19,6 +19,7 @@ from flask_cors import CORS
 from .database import init_db
 from .auth import auth_bp
 from .history import history_bp
+from .rate_limit import rate_limit
 
 from arithmetic import (
     add, subtract, multiply, divide, power, modulo, floor_divide,
@@ -89,6 +90,7 @@ def health():
 # Basic
 # -------------------------------------------------------------------------
 @app.route("/api/basic", methods=["POST"])
+@rate_limit(max_calls=120, window_seconds=60)
 def basic():
     data = request.get_json(silent=True) or {}
     op = data.get("operation")
@@ -110,6 +112,7 @@ def basic():
 # Scientific
 # -------------------------------------------------------------------------
 @app.route("/api/scientific", methods=["POST"])
+@rate_limit(max_calls=120, window_seconds=60)
 def scientific():
     data = request.get_json(silent=True) or {}
     op = data.get("operation")
@@ -130,6 +133,7 @@ def scientific():
 # Matrix
 # -------------------------------------------------------------------------
 @app.route("/api/matrix", methods=["POST"])
+@rate_limit(max_calls=120, window_seconds=60)
 def matrix():
     data = request.get_json(silent=True) or {}
     op = data.get("operation")
@@ -162,6 +166,7 @@ def ai_status():
 
 
 @app.route("/api/ai", methods=["POST"])
+@rate_limit(max_calls=120, window_seconds=60)
 def ai_solve():
     if not AI_AVAILABLE:
         return jsonify({"error": "AI engine not installed (Phase 3 pending)"}), 503
