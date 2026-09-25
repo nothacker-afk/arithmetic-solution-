@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en" class="theme-dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Admin — Arithmetic Super App</title>
+<style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        background: #0f172a; color: #e2e8f0; min-height: 100vh; padding: 20px;
+        font-size: 14px;
+    }
+    .container { max-width: 1100px; margin: 0 auto; }
+    header {
+        display: flex; justify-content: space-between; align-items: center;
+        margin-bottom: 24px; flex-wrap: wrap; gap: 12px;
+    }
+    h1 {
+        font-size: 1.4rem;
+        background: linear-gradient(90deg, #38bdf8, #818cf8);
+        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .actions { display: flex; gap: 8px; align-items: center; font-size: .85rem; }
+    .actions button {
+        padding: 6px 12px; border-radius: 6px; border: none; cursor: pointer;
+        background: #334155; color: #e2e8f0; font-size: .85rem;
+    }
+    .actions button:hover { background: #475569; }
+    .actions button.primary {
+        background: linear-gradient(90deg, #38bdf8, #818cf8); color: #0f172a;
+        font-weight: 600;
+    }
+    .actions button.danger { background: #7f1d1d; color: #fca5a5; }
+    .actions button.danger:hover { background: #991b1b; }
+
+    .grid {
+        display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 12px; margin-bottom: 24px;
+    }
+    .stat {
+        background: #1e293b; border-radius: 10px; padding: 14px 16px;
+        border-left: 3px solid #38bdf8;
+    }
+    .stat .label { color: #94a3b8; font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; }
+    .stat .value { font-size: 1.6rem; font-weight: 700; margin-top: 4px; }
+    .stat .sub { color: #64748b; font-size: .72rem; margin-top: 2px; }
+
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+    @media (max-width: 720px) { .row { grid-template-columns: 1fr; } }
+
+    .card {
+        background: #1e293b; border-radius: 10px; padding: 16px;
+    }
+    .card h2 {
+        font-size: .9rem; color: #94a3b8; text-transform: uppercase;
+        letter-spacing: .06em; margin-bottom: 12px; font-weight: 600;
+    }
+    .card.full { grid-column: 1 / -1; }
+
+    table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+    th {
+        text-align: left; color: #94a3b8; font-weight: 500; font-size: .72rem;
+        text-transform: uppercase; letter-spacing: .05em; padding: 6px 8px;
+        border-bottom: 1px solid #334155;
+    }
+    td { padding: 8px; border-bottom: 1px solid #1f2937; }
+    td code { color: #a5f3fc; font-family: monospace; font-size: .78rem; }
+    tr:hover td { background: #1a2538; }
+    .scroll { max-height: 340px; overflow-y: auto; }
+
+    .filter-bar {
+        display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap;
+    }
+    .filter-bar input, .filter-bar select {
+        padding: 6px 10px; border-radius: 6px; border: 1px solid #334155;
+        background: #0f172a; color: #e2e8f0; font-size: .82rem;
+    }
+    .badge {
+        display: inline-block; padding: 2px 6px; border-radius: 4px;
+        font-size: .7rem; font-weight: 600;
+    }
+    .badge.ok { background: #064e3b; color: #6ee7b7; }
+    .badge.failed { background: #7f1d1d; color: #fca5a5; }
+
+    .kv { display: grid; grid-template-columns: 140px 1fr; gap: 6px 12px; font-size: .82rem; }
+    .kv .k { color: #94a3b8; }
+    .kv .v { color: #e2e8f0; font-family: monospace; word-break: break-all; }
+
+    .empty { color: #64748b; font-size: .82rem; padding: 12px 0; text-align: center; }
+    .toast {
+        position: fixed; bottom: 20px; right: 20px; background: #1e293b;
+        border-left: 3px solid #38bdf8; padding: 10px 16px; border-radius: 6px;
+        box-shadow: 0 10px 30px rgba(0,0,0,.4); font-size: .85rem;
+        transform: translateY(80px); transition: transform .3s;
+    }
+    .toast.show { transform: translateY(0); }
+</style>
+</head>
+<body>
+<div class="container">
+    <header>
+        <h1>Admin Dashboard</h1>
+        <div class="actions">
+            <span id="who"></span>
+            <button onclick="refreshAll()">↻ Refresh</button>
+            <button class="primary" onclick="location.href='/'">← Back to app</button>
+        </div>
+    </header>
+
+    <div id="stats" class="grid"></div>
+
+    <div class="row">
+        <div class="card">
+            <h2>Server info</h2>
+            <div id="server-info" class="kv"></div>
+        </div>
+        <div class="card">
+            <h2>Metrics snapshot</h2>
+            <div id="metrics-info" class="kv"></div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="card">
+            <h2>Recent users (<span id="users-count">0</span>)</h2>
+            <div class="scroll">
+                <table id="users-table">
+                    <thead><tr>
+                        <th>ID</th><th>Username</th><th>Email</th>
+                        <th>Rooms</th><th>Calcs</th><th>Joined</th>
+                    </tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card">
+            <h2>Registered rooms (<span id="rooms-count">0</span>)</h2>
+            <div class="scroll">
+                <table id="rooms-table">
+                    <thead><tr>
+                        <th>Name</th><th>Owner</th><th>Members</th>
+                        <th>Msgs</th><th>Files</th><th>Created</th>
+                    </tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="card full" style="margin-bottom:24px;">
+        <h2>Audit log (<span id="audit-count">0</span>)</h2>
+        <div class="filter-bar">
+            <input id="filter-actor" placeholder="Actor / resource id" />
+            <select id="filter-action"><option value="">All actions</option></select>
+            <select id="filter-status">
+                <option value="">All statuses</option>
+                <option value="ok">ok</option>
+                <option value="failed">failed</option>
+            </select>
+            <button onclick="loadAudit()">Apply</button>
+            <button onclick="clearFilters()">Clear</button>
+        </div>
+        <div class="scroll">
+            <table id="audit-table">
+                <thead><tr>
+                    <th>Time</th><th>Action</th><th>Actor</th>
+                    <th>Resource</th><th>Status</th><th>IP</th><th>Details</th>
+                </tr></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card" style="border-left:3px solid #7f1d1d;">
+        <h2>Danger zone</h2>
+        <p style="color:#94a3b8;font-size:.85rem;margin-bottom:12px;">
+            Clear the audit log. This cannot be undone.
+        </p>
+        <button class="danger" onclick="clearAudit()">🗑 Clear audit log</button>
+    </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+const API = window.location.origin;
+
+// ---------------------------------------------------------------------
+// Auth state (reuse localStorage keys from main app)
+// ---------------------------------------------------------------------
+const state = {
+    token: localStorage.getItem("token"),
+    username: localStorage.getItem("username"),
+};
+
+function authHeaders() {
+    return state.token ? { "Authorization": "Bearer " + state.token } : {};
+}
+
+async function api(path, options = {}) {
+    const res = await fetch(API + path, {
+        ...options,
+        headers: {
+            "Content-Type": "application/json",
+            ...authHeaders(),
+            ...(options.headers || {}),
+        },
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    return data;
+}
+
+function toast(msg) {
+    const el = document.getElementById("toast");
+    el.textContent = msg;
+    el.classList.add("show");
+    setTimeout(() => el.classList.remove("show"), 2500);
+}
+
+// ---------------------------------------------------------------------
+// Renderers
+// ---------------------------------------------------------------------
+function fmtBytes(n) {
+    if (n < 1024) return n + " B";
+    if (n < 1024 * 1024) return (n / 1024).toFixed(1) + " KB";
+    if (n < 1024 * 1024 * 1024) return (n / 1024 / 1024).toFixed(2) + " MB";
+    return (n / 1024 / 1024 / 1024).toFixed(2) + " GB";
+}
+
+function fmtUptime(s) {
+    if (s < 60) return s.toFixed(1) + "s";
+    if (s < 3600) return Math.floor(s / 60) + "m " + Math.floor(s % 60) + "s";
+    return Math.floor(s / 3600) + "h " + Math.floor((s % 3600) / 60) + "m";
+}
+
+function renderStats(s) {
+    document.getElementById("stats").innerHTML = `
+        <div class="stat"><div class="label">Users</div><div class="value">${s.users}</div></div>
+        <div class="stat"><div class="label">Rooms</div><div class="value">${s.rooms}</div>
+            <div class="sub">${s.room_members} memberships</div></div>
+        <div class="stat"><div class="label">Invites</div><div class="value">${s.invites}</div></div>
+        <div class="stat"><div class="label">Messages</div><div class="value">${s.chat_messages}</div></div>
+        <div class="stat"><div class="label">Calculations</div><div class="value">${s.calculations}</div></div>
+        <div class="stat"><div class="label">Files</div><div class="value">${s.files.count}</div>
+            <div class="sub">${fmtBytes(s.files.total_bytes)}</div></div>
+        <div class="stat"><div class="label">Audit entries</div><div class="value">${s.audit_entries}</div></div>
+    `;
+}
+
+function renderServerInfo(info) {
+    document.getElementById("server-info").innerHTML = `
+        <div class="k">Version</div><div class="v">${info.version}</div>
+        <div class="k">Python</div><div class="v">${info.python}</div>
+        <div class="k">Platform</div><div class="v">${info.platform}</div>
+        <div class="k">DB backend</div><div class="v">${info.db_backend}</div>
+        <div class="k">DB path</div><div class="v">${info.db_path}</div>
+        <div class="k">Uptime</div><div class="v">${fmtUptime(info.uptime_seconds)}</div>
+    `;
+}
+
+function renderMetrics(m) {
+    const total = m.requests_total.reduce((a, r) => a + r.count, 0);
+    const errors = Object.values(m.errors_total).reduce((a, v) => a + v, 0);
+    document.getElementById("metrics-info").innerHTML = `
+        <div class="k">Total requests</div><div class="v">${total}</div>
+        <div class="k">Distinct routes</div><div class="v">${m.requests_total.length}</div>
+        <div class="k">5xx errors</div><div class="v" style="color:${errors ? '#fca5a5' : '#6ee7b7'}">${errors}</div>
+    `;
+}
+
+function renderUsers(users) {
+    document.getElementById("users-count").textContent = users.length;
+    document.querySelector("#users-table tbody").innerHTML = users.map(u => `
+        <tr>
+            <td>${u.id}</td>
+            <td><strong>${u.username}</strong></td>
+            <td>${u.email}</td>
+            <td>${u.room_count}</td>
+            <td>${u.calc_count}</td>
+            <td>${u.created_at || ""}</td>
+        </tr>
+    `).join("") || `<tr><td colspan="6" class="empty">No users yet</td></tr>`;
+}
+
+function renderRooms(rooms) {
+    document.getElementById("rooms-count").textContent = rooms.length;
+    document.querySelector("#rooms-table tbody").innerHTML = rooms.map(r => `
+        <tr>
+            <td><code>${r.name}</code></td>
+            <td>${r.owner}</td>
+            <td>${r.member_count}</td>
+            <td>${r.message_count}</td>
+            <td>${r.file_count}</td>
+            <td>${r.created_at || ""}</td>
+        </tr>
+    `).join("") || `<tr><td colspan="6" class="empty">No claimed rooms</td></tr>`;
+}
+
+function renderAudit(entries, actions) {
+    document.getElementById("audit-count").textContent = entries.length;
+
+    // Populate the action filter once
+    const sel = document.getElementById("filter-action");
+    if (sel.options.length <= 1) {
+        for (const a of actions) {
+            const opt = document.createElement("option");
+            opt.value = a;
+            opt.textContent = a;
+            sel.appendChild(opt);
+        }
+    }
+
+    document.querySelector("#audit-table tbody").innerHTML = entries.map(e => `
+        <tr>
+            <td>${e.created_at || ""}</td>
+            <td><code>${e.action}</code></td>
+            <td>${e.actor_id || "—"}</td>
+            <td>${e.resource || "—"}${e.resource_id ? ":" + e.resource_id : ""}</td>
+            <td><span class="badge ${e.status}">${e.status}</span></td>
+            <td>${e.ip || "—"}</td>
+            <td><code>${e.details ? JSON.stringify(e.details) : ""}</code></td>
+        </tr>
+    `).join("") || `<tr><td colspan="7" class="empty">No audit entries</td></tr>`;
+}
+
+// ---------------------------------------------------------------------
+// Loaders
+// ---------------------------------------------------------------------
+async function loadStats()    { renderStats(await api("/api/admin/stats")); }
+async function loadServer()   { renderServerInfo(await api("/api/admin/server-info")); }
+async function loadMetrics()  { renderMetrics(await api("/api/admin/metrics")); }
+async function loadUsers()    { renderUsers((await api("/api/admin/users")).users); }
+async function loadRooms()    { renderRooms((await api("/api/admin/rooms")).rooms); }
+
+async function loadAudit() {
+    const params = new URLSearchParams();
+    const actor = document.getElementById("filter-actor").value.trim();
+    const action = document.getElementById("filter-action").value;
+    const status = document.getElementById("filter-status").value;
+    if (actor) params.set("actor", actor);
+    if (action) params.set("action", action);
+    if (status) params.set("status", status);
+    const data = await api("/api/admin/audit?" + params.toString());
+    renderAudit(data.entries, data.actions);
+}
+
+function clearFilters() {
+    document.getElementById("filter-actor").value = "";
+    document.getElementById("filter-action").value = "";
+    document.getElementById("filter-status").value = "";
+    loadAudit();
+}
+
+async function clearAudit() {
+    if (!confirm("Delete the entire audit log? This cannot be undone.")) return;
+    try {
+        const r = await api("/api/admin/audit", { method: "DELETE" });
+        toast(`Cleared ${r.deleted_count} audit entries`);
+        await Promise.all([loadAudit(), loadStats()]);
+    } catch (e) {
+        toast("Error: " + e.message);
+    }
+}
+
+async function refreshAll() {
+    try {
+        await Promise.all([
+            loadStats(), loadServer(), loadMetrics(),
+            loadUsers(), loadRooms(), loadAudit(),
+        ]);
+    } catch (e) {
+        toast("Error: " + e.message);
+    }
+}
+
+// ---------------------------------------------------------------------
+// Init
+// ---------------------------------------------------------------------
+if (!state.token) {
+    document.body.innerHTML = `
+        <div style="text-align:center;padding:60px 20px;max-width:400px;margin:0 auto;">
+            <h1 style="margin-bottom:16px;">Admin Dashboard</h1>
+            <p style="color:#94a3b8;margin-bottom:24px;">
+                You must be logged in as an admin user to access this page.
+            </p>
+            <button onclick="location.href='/'"
+                style="padding:10px 20px;border-radius:8px;border:none;cursor:pointer;
+                       background:linear-gradient(90deg,#38bdf8,#818cf8);
+                       color:#0f172a;font-weight:600;">
+                ← Back to login
+            </button>
+        </div>`;
+} else {
+    document.getElementById("who").textContent = "Signed in as " + (state.username || "?");
+    refreshAll().catch(e => toast("Error: " + e.message));
+    setInterval(refreshAll, 15000);
+}
+</script>
+</body>
+</html>

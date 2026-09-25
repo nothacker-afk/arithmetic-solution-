@@ -27,6 +27,7 @@ from .rooms import rooms_bp
 from .i18n import supported_locales, TRANSLATIONS, pick_locale
 from .theme import theme_bp
 from .admin import admin_bp
+from .admin_dashboard import admin_dash_bp
 
 from arithmetic import plugins
 from arithmetic import (
@@ -58,6 +59,7 @@ app.register_blueprint(files_bp)
 app.register_blueprint(rooms_bp)
 app.register_blueprint(theme_bp)
 app.register_blueprint(admin_bp)
+app.register_blueprint(admin_dash_bp)
 
 
 BASIC_OPS = {
@@ -301,6 +303,17 @@ def i18n_detect():
     """Return the locale best matching the client's Accept-Language."""
     picked = pick_locale(request.headers.get("Accept-Language", ""))
     return jsonify({"locale": picked})
+
+
+
+
+@app.route("/admin")
+def admin_page():
+    """Serve the admin dashboard (Phase 16)."""
+    path = FRONTEND_DIR / "admin.html"
+    if not path.exists():
+        return jsonify({"error": "Admin dashboard not installed"}), 404
+    return send_from_directory(str(FRONTEND_DIR), "admin.html")
 
 
 if __name__ == "__main__":

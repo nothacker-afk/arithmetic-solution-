@@ -60,3 +60,19 @@ base64 ciphertext — it cannot read messages even if the database leaks.
 | `typing_start` | client → server | `{room, username}` |
 | `typing_stop` | client → server | `{room, username}` |
 | `typing` | server → room | `{username, state: "start"\|"stop"}` |
+
+## Admin Dashboard
+
+Visit `/admin` after logging in as the admin user (default: the first
+registered user, id=1). Set `ADMIN_USER_ID` env var to override.
+
+The dashboard shows:
+
+- Aggregate stats (users, rooms, memberships, messages, files, calcs, audit)
+- Server info (version, Python, platform, DB backend, uptime)
+- Recent users with room + calc counts
+- Registered rooms with owner, member/msg/file counts
+- Full audit log with filters (actor, action, status)
+- Danger zone: clear audit log
+
+All endpoints under `/api/admin/*` require an admin Bearer token.
