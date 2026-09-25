@@ -228,6 +228,45 @@ def _ensure_db_initialized():
         init_db()
         _db_initialized = True
 
+
+# -------------------------------------------------------------------------
+# GraphQL (Phase 8) — Strawberry-mounted at /graphql
+# -------------------------------------------------------------------------
+from strawberry.flask.views import GraphQLView  # noqa: E402
+from .graphql_schema import schema as _graphql_schema  # noqa: E402
+
+
+app.add_url_rule(
+    "/graphql",
+    view_func=GraphQLView.as_view("graphql_view", schema=_graphql_schema),
+)
+
+
+
+# -------------------------------------------------------------------------
+# PWA (Phase 8) — manifest, service worker, static assets
+# -------------------------------------------------------------------------
+@app.route("/manifest.json")
+def manifest():
+    return send_from_directory(str(FRONTEND_DIR), "manifest.json",
+                               mimetype="application/manifest+json")
+
+
+@app.route("/sw.js")
+def service_worker():
+    resp = send_from_directory(str(FRONTEND_DIR), "sw.js",
+                               mimetype="application/javascript")
+    # Allow SW to control root scope
+    resp.headers["Service-Worker-Allowed"] = "/"
+    resp.headers["Cache-Control"] = "no-cache"
+    return resp
+
+
+@app.route("/static/<path:filename>")
+def static_files(filename):
+    return send_from_directory(str(FRONTEND_DIR), filename)
+
+
 if __name__ == "__main__":
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 8000
     sys.stderr.write(f"\n  Arithmetic Super App running at http://127.0.0.1:{port}\n")

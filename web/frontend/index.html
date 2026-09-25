@@ -4,6 +4,9 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Arithmetic Super App</title>
+<link rel="manifest" href="/manifest.json" />
+<meta name="theme-color" content="#38bdf8" />
+<link rel="apple-touch-icon" href="/static/icon-192.svg" />
 <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -74,6 +77,7 @@
         <h1>Arithmetic Super App</h1>
         <div id="auth-status">
             <span id="user-label">Guest</span>
+            <button id="install-btn" style="display:none;background:#059669;color:#e2e8f0;">Install</button>
             <button id="auth-btn">Login</button>
         </div>
     </header>
@@ -483,6 +487,39 @@ async function rtBroadcast() {
         });
     } catch (e) { rtSetStatus("Error: " + e.message); }
 }
+
+
+// ============ PWA: service worker + install prompt ============
+if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+        navigator.serviceWorker.register("/sw.js", { scope: "/" })
+            .then((reg) => console.log("[PWA] SW registered:", reg.scope))
+            .catch((err) => console.error("[PWA] SW registration failed:", err));
+    });
+}
+
+let deferredInstallPrompt = null;
+window.addEventListener("beforeinstallprompt", (e) => {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    const btn = document.getElementById("install-btn");
+    if (btn) btn.style.display = "inline-block";
+});
+
+document.addEventListener("click", async (e) => {
+    if (e.target.id !== "install-btn") return;
+    if (!deferredInstallPrompt) return;
+    deferredInstallPrompt.prompt();
+    const choice = await deferredInstallPrompt.userChoice;
+    console.log("[PWA] install choice:", choice.outcome);
+    deferredInstallPrompt = null;
+    document.getElementById("install-btn").style.display = "none";
+});
+
+window.addEventListener("appinstalled", () => {
+    console.log("[PWA] installed");
+    deferredInstallPrompt = null;
+});
 
 // ============ Init ============
 updateAuthUI();

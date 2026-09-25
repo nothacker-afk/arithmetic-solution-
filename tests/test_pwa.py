@@ -1,0 +1,41 @@
+"""Tests for PWA routes (manifest, service worker, static files)."""
+
+
+def test_manifest_served(client):
+    r = client.get("/manifest.json")
+    assert r.status_code == 200
+    assert "application/manifest" in r.content_type
+    data = r.get_json()
+    assert data["name"] == "Arithmetic Super App"
+    assert data["start_url"] == "/"
+    assert data["display"] == "standalone"
+
+
+def test_service_worker_served(client):
+    r = client.get("/sw.js")
+    assert r.status_code == 200
+    assert "javascript" in r.content_type
+    assert r.headers.get("Service-Worker-Allowed") == "/"
+    body = r.get_data(as_text=True)
+    assert "arith-pwa-v1" in body
+
+
+def test_offline_page_served(client):
+    r = client.get("/static/offline.html")
+    assert r.status_code == 200
+    assert b"You're offline" in r.data
+
+
+def test_icons_served(client):
+    for name in ("icon-192.svg", "icon-512.svg"):
+        r = client.get(f"/static/{name}")
+        assert r.status_code == 200
+        assert b"<svg" in r.data
+
+
+def test_index_html_has_manifest_link(client):
+    r = client.get("/")
+    assert r.status_code == 200
+    body = r.get_data(as_text=True)
+    assert 'rel="manifest"' in body
+    assert "/sw.js" in body
