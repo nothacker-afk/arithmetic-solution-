@@ -88,7 +88,7 @@ def test_users_list(client):
 def test_users_limit(client):
     tok, _ = _register(client, "admin4")
     for i in range(5):
-        _register(client, f"u{i}")
+        _register(client, f"user{i}")   # >= 3 chars to satisfy validation
     r = client.get("/api/admin/users?limit=2", headers=_auth(tok))
     assert len(r.get_json()["users"]) == 2
 
