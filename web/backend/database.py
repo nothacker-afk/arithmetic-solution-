@@ -73,6 +73,38 @@ CREATE TABLE IF NOT EXISTS room_files (
 );
 
 CREATE INDEX IF NOT EXISTS idx_files_room ON room_files(room_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS rooms (
+    name TEXT PRIMARY KEY,
+    owner_id INTEGER NOT NULL,
+    password_hash TEXT,
+    is_public INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS room_members (
+    room_name TEXT NOT NULL,
+    user_id INTEGER NOT NULL,
+    role TEXT NOT NULL DEFAULT 'member',
+    joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (room_name, user_id),
+    FOREIGN KEY (room_name) REFERENCES rooms(name) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_members_user ON room_members(user_id);
+
+CREATE TABLE IF NOT EXISTS room_invites (
+    token TEXT PRIMARY KEY,
+    room_name TEXT NOT NULL,
+    created_by INTEGER NOT NULL,
+    expires_at TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (room_name) REFERENCES rooms(name) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_invites_room ON room_invites(room_name);
 """
 
 

@@ -23,6 +23,7 @@ from .rate_limit import rate_limit
 from .realtime import socketio
 from .chat import chat_bp
 from .files import files_bp
+from .rooms import rooms_bp
 
 from arithmetic import plugins
 from arithmetic import (
@@ -51,6 +52,7 @@ app.register_blueprint(auth_bp)
 app.register_blueprint(history_bp)
 app.register_blueprint(chat_bp)
 app.register_blueprint(files_bp)
+app.register_blueprint(rooms_bp)
 
 
 BASIC_OPS = {

@@ -227,6 +227,23 @@
         </div>
 
         
+        
+        <label style="margin-top:20px;">Room management</label>
+        <div class="row">
+            <div><button class="primary" onclick="rtClaimRoom()">Claim room</button></div>
+            <div><button class="primary" onclick="rtShowInvite()">Invite</button></div>
+        </div>
+        <div class="row">
+            <div><button class="primary" onclick="rtShowMembers()">Members</button></div>
+            <div><button class="primary" onclick="rtDeleteRoom()">Delete room</button></div>
+        </div>
+        <div id="rt-room-info" class="muted" style="text-align:left;"></div>
+        <div id="rt-invite-box" style="display:none;">
+            <input type="text" id="rt-invite-url" readonly />
+            <button class="primary" onclick="rtCopyInvite()">Copy invite URL</button>
+        </div>
+        <div id="rt-members-box" style="display:none;margin-top:8px;"></div>
+
         <label style="margin-top:20px;">Room files (E2E encrypted)</label>
         <input type="file" id="rt-file-input" />
         <button class="primary" onclick="rtUploadFile()">Upload</button>
@@ -553,6 +570,7 @@ window.addEventListener("appinstalled", () => {
 
 // ============ Init ============
 updateAuthUI();
+rtHandleInviteFromURL();
 </script>
 </body>
 </html>

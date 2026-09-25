@@ -20,3 +20,7 @@ class Config:
     MAX_TOTAL_BYTES_PER_ROOM = int(
         os.environ.get("MAX_TOTAL_BYTES_PER_ROOM", str(50 * 1024 * 1024))
     )
+
+    # Phase 11: room invites
+    INVITE_TTL_HOURS = int(os.environ.get("INVITE_TTL_HOURS", "24"))
+    MAX_INVITE_TTL_HOURS = int(os.environ.get("MAX_INVITE_TTL_HOURS", "720"))
