@@ -43,7 +43,16 @@ def test_graphql_basic_mutation(client):
 def test_graphql_scientific(client):
     r = _gql(client, 'mutation { scientific(operation: "sqrt", x: 144) { result } }')
     data = r.get_json()["data"]["scientific"]
-    assert data["result"] == "12.0"
+    # Whole floats are rendered as ints by _fmt_num
+    assert data["result"] == "12"
+
+
+def test_graphql_scientific_fractional(client):
+    """Sanity: non-whole floats keep their decimal."""
+    r = _gql(client, 'mutation { scientific(operation: "sqrt", x: 2) { result } }')
+    data = r.get_json()["data"]["scientific"]
+    # sqrt(2) = 1.414..., not a whole number
+    assert data["result"].startswith("1.41")
 
 
 def test_graphql_matrix(client):
