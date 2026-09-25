@@ -1,0 +1,177 @@
+"""Flask backend for Arithmetic Super App.
+
+Termux-friendly (pure Python, no Rust/C compilation required).
+
+Endpoints:
+    GET  /                - serves the frontend
+    GET  /api/health      - health check
+    POST /api/basic       - basic operations
+    POST /api/scientific  - scientific operations
+    POST /api/matrix      - matrix operations
+    POST /api/ai          - natural language parser
+"""
+import sys
+from pathlib import Path
+
+from flask import Flask, jsonify, request, send_from_directory
+from flask_cors import CORS
+
+from arithmetic import (
+    add, subtract, multiply, divide, power, modulo, floor_divide,
+    sqrt, cbrt, log10, sin, cos, tan, factorial, absolute,
+    matrix_add, matrix_subtract, matrix_multiply, matrix_transpose,
+)
+
+# AI engine (Phase 3) - import lazily so Phase 2 alone still works
+try:
+    from ai_engine import parse_and_solve, llm_solve, ParseError, is_llm_available
+    AI_AVAILABLE = True
+except ImportError:
+    AI_AVAILABLE = False
+
+
+FRONTEND_DIR = Path(__file__).parent.parent / "frontend"
+app = Flask(__name__, static_folder=None)
+CORS(app)
+
+
+BASIC_OPS = {
+    "add": add, "subtract": subtract, "multiply": multiply, "divide": divide,
+    "power": power, "modulo": modulo, "floor_divide": floor_divide,
+}
+
+SCIENTIFIC_OPS = {
+    "sqrt": sqrt, "cbrt": cbrt, "log10": log10,
+    "sin": sin, "cos": cos, "tan": tan,
+    "factorial": factorial, "absolute": absolute,
+}
+
+MATRIX_OPS = {
+    "matrix_add": matrix_add,
+    "matrix_subtract": matrix_subtract,
+    "matrix_multiply": matrix_multiply,
+}
+
+
+# -------------------------------------------------------------------------
+# Frontend
+# -------------------------------------------------------------------------
+@app.route("/")
+def index():
+    if not FRONTEND_DIR.exists():
+        return jsonify({"error": "Frontend not built"}), 404
+    return send_from_directory(str(FRONTEND_DIR), "index.html")
+
+
+# -------------------------------------------------------------------------
+# Health
+# -------------------------------------------------------------------------
+@app.route("/api/health")
+def health():
+    return jsonify({
+        "status": "ok",
+        "backend": "flask",
+        "version": "0.3.0",
+        "ai_available": AI_AVAILABLE,
+    })
+
+
+# -------------------------------------------------------------------------
+# Basic
+# -------------------------------------------------------------------------
+@app.route("/api/basic", methods=["POST"])
+def basic():
+    data = request.get_json(silent=True) or {}
+    op = data.get("operation")
+    if op not in BASIC_OPS:
+        return jsonify({"error": f"Unknown operation: {op}"}), 400
+    try:
+        a = float(data.get("a"))
+        b = float(data.get("b"))
+    except (TypeError, ValueError):
+        return jsonify({"error": "Invalid numeric input"}), 400
+    try:
+        result = BASIC_OPS[op](a, b)
+        return jsonify({"result": result, "expression": f"{a} {op} {b}"})
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+
+
+# -------------------------------------------------------------------------
+# Scientific
+# -------------------------------------------------------------------------
+@app.route("/api/scientific", methods=["POST"])
+def scientific():
+    data = request.get_json(silent=True) or {}
+    op = data.get("operation")
+    if op not in SCIENTIFIC_OPS:
+        return jsonify({"error": f"Unknown operation: {op}"}), 400
+    try:
+        x = float(data.get("x"))
+    except (TypeError, ValueError):
+        return jsonify({"error": "Invalid numeric input"}), 400
+    try:
+        result = SCIENTIFIC_OPS[op](x)
+        return jsonify({"result": result, "expression": f"{op}({x})"})
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+
+
+# -------------------------------------------------------------------------
+# Matrix
+# -------------------------------------------------------------------------
+@app.route("/api/matrix", methods=["POST"])
+def matrix():
+    data = request.get_json(silent=True) or {}
+    op = data.get("operation")
+    a = data.get("a")
+    b = data.get("b")
+    try:
+        if op == "matrix_transpose":
+            result = matrix_transpose(a)
+        elif op in MATRIX_OPS:
+            if b is None:
+                return jsonify({"error": "Matrix 'b' is required"}), 400
+            result = MATRIX_OPS[op](a, b)
+        else:
+            return jsonify({"error": f"Unknown operation: {op}"}), 400
+        return jsonify({"result": result, "expression": op})
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+
+
+# -------------------------------------------------------------------------
+# AI (Phase 3)
+# -------------------------------------------------------------------------
+@app.route("/api/ai/status")
+def ai_status():
+    return jsonify({
+        "ai_available": AI_AVAILABLE,
+        "llm_available": is_llm_available() if AI_AVAILABLE else False,
+        "engine": ("llm+rule" if (AI_AVAILABLE and is_llm_available()) else "rule") if AI_AVAILABLE else "none",
+    })
+
+
+@app.route("/api/ai", methods=["POST"])
+def ai_solve():
+    if not AI_AVAILABLE:
+        return jsonify({"error": "AI engine not installed (Phase 3 pending)"}), 503
+    data = request.get_json(silent=True) or {}
+    text = (data.get("text") or "").strip()
+    if not text:
+        return jsonify({"error": "Empty input"}), 400
+    try:
+        use_llm = bool(data.get("use_llm")) and is_llm_available()
+        result = llm_solve(text) if use_llm else parse_and_solve(text)
+        return jsonify(result)
+    except ParseError as e:
+        return jsonify({"error": str(e)}), 400
+
+
+# -------------------------------------------------------------------------
+# Entrypoint
+# -------------------------------------------------------------------------
+if __name__ == "__main__":
+    port = int(sys.argv[1]) if len(sys.argv) > 1 else 8000
+    sys.stderr.write(f"\n  Arithmetic Super App running at http://127.0.0.1:{port}\n\n")
+    app.run(host="0.0.0.0", port=port, debug=False)
