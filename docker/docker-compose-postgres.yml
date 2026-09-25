@@ -1,0 +1,45 @@
+# PostgreSQL deployment for Arithmetic Super App.
+#
+# Usage (from project root):
+#   docker compose -f docker/docker-compose-postgres.yml up --build
+#
+# The API is reachable at http://localhost:8000
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: arithmetic-db
+    environment:
+      POSTGRES_USER: arith
+      POSTGRES_PASSWORD: arith
+      POSTGRES_DB: arith
+    volumes:
+      - arithmetic_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U arith -d arith"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: arithmetic-api
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_BACKEND: postgres
+      DATABASE_URL: postgresql+psycopg://arith:arith@db:5432/arith
+      SECRET_KEY: change-me-in-prod
+      JWT_SECRET: change-me-too
+      LOG_FORMAT: json
+    ports:
+      - "8000:8000"
+    command: >
+      sh -c "pip install psycopg[binary] sqlalchemy --quiet &&
+             alembic upgrade head &&
+             python -m web.backend.main"
+
+volumes:
+  arithmetic_pgdata:

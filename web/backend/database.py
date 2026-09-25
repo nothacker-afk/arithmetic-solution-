@@ -9,13 +9,29 @@ from contextlib import contextmanager
 from pathlib import Path
 
 
+
+
+# ---------------------------------------------------------------------
+# Backend dispatch (Phase 15)
+# ---------------------------------------------------------------------
+# When DB_BACKEND=postgres, database_pg provides the same get_db/init_db
+# interface. On Termux (default), sqlite3 is used directly below.
+import os as _os
+
+if _os.environ.get("DB_BACKEND", "sqlite").lower() == "postgres":
+    from .database_pg import get_db, init_db, reset_db  # noqa: F401
+    _USE_PG = True
+else:
+    _USE_PG = False
+
+
 def get_db_path() -> str:
     """Return the current database path (env-driven)."""
     return os.environ.get("DB_PATH", str(Path.home() / ".arithmetic.db"))
 
 
 @contextmanager
-def get_db():
+def _sqlite_get_db():
     """Context manager yielding a sqlite3 connection."""
     conn = sqlite3.connect(get_db_path())
     conn.row_factory = sqlite3.Row
@@ -106,6 +122,22 @@ CREATE TABLE IF NOT EXISTS room_invites (
 
 CREATE INDEX IF NOT EXISTS idx_invites_room ON room_invites(room_name);
 
+CREATE TABLE IF NOT EXISTS audit_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    action TEXT NOT NULL,
+    actor_id INTEGER,
+    resource TEXT,
+    resource_id TEXT,
+    status TEXT NOT NULL DEFAULT 'ok',
+    details TEXT,
+    ip TEXT,
+    user_agent TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_audit_actor ON audit_log(actor_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_action ON audit_log(action, created_at DESC);
+
 CREATE TABLE IF NOT EXISTS user_preferences (
     user_id INTEGER PRIMARY KEY,
     theme TEXT NOT NULL DEFAULT 'auto',
@@ -116,13 +148,13 @@ CREATE TABLE IF NOT EXISTS user_preferences (
 """
 
 
-def init_db() -> None:
+def _sqlite_init_db() -> None:
     """Create tables if they don't exist."""
     with get_db() as conn:
         conn.executescript(SCHEMA)
 
 
-def reset_db() -> None:
+def _sqlite_reset_db() -> None:
     """Drop and recreate all tables (used in tests)."""
     with get_db() as conn:
         conn.executescript("""
@@ -130,3 +162,9 @@ def reset_db() -> None:
             DROP TABLE IF EXISTS users;
         """)
         conn.executescript(SCHEMA)
+
+# Aliases for the sqlite backend (used when DB_BACKEND != postgres)
+if not _USE_PG:
+    get_db = _sqlite_get_db
+    init_db = _sqlite_init_db
+    reset_db = _sqlite_reset_db

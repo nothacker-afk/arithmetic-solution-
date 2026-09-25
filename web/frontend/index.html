@@ -232,6 +232,15 @@
 
         
         
+        
+        <label style="margin-top:20px;">Voice / video call</label>
+        <div class="row">
+            <div><button class="primary" onclick="rtStartCall()">Start call</button></div>
+            <div><button class="primary" onclick="rtEndCall()">End call</button></div>
+        </div>
+        <div id="rt-videos" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px;"></div>
+        <video id="rt-local-video" autoplay muted playsinline style="display:none;"></video>
+
         <label style="margin-top:20px;">Room management</label>
         <div class="row">
             <div><button class="primary" onclick="rtClaimRoom()">Claim room</button></div>
@@ -496,6 +505,36 @@ function rtEnsureSocket() {
     });
     socket.on("presence", (data) => rtSetUsers(data.users));
     socket.on("error", (data) => rtSetStatus("Error: " + (data.error || "unknown")));
+    socket.on("webrtc_peer_list", (data) => {
+        for (const p of data.peers) _rtcMakeOffer(p.sid, p.username);
+    });
+    socket.on("webrtc_peer_joined", (data) => {
+        // Wait — the new peer will send us an offer.
+        rtSetStatus((data.username || "peer") + " joined the call");
+    });
+    socket.on("webrtc_peer_left", (data) => {
+        if (_rtcPcs[data.sid]) { _rtcPcs[data.sid].close(); delete _rtcPcs[data.sid]; }
+        _rtcRemoveTile(data.sid);
+    });
+    socket.on("webrtc_offer", async (data) => {
+        const pc = _rtcPc(data.from_sid, data.from_username);
+        await pc.setRemoteDescription(data.sdp);
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        socket.emit("webrtc_answer", { target_sid: data.from_sid, sdp: answer });
+    });
+    socket.on("webrtc_answer", async (data) => {
+        const pc = _rtcPcs[data.from_sid];
+        if (pc) await pc.setRemoteDescription(data.sdp);
+    });
+    socket.on("webrtc_ice", async (data) => {
+        const pc = _rtcPcs[data.from_sid];
+        if (pc && data.candidate) {
+            try { await pc.addIceCandidate(data.candidate); } catch (e) { /* ignore */ }
+        }
+    });
+    socket.on("webrtc_error", (data) => rtSetStatus("WebRTC: " + (data.error || "error")));
+
     return socket;
 }
 

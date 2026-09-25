@@ -26,6 +26,7 @@ from .files import files_bp
 from .rooms import rooms_bp
 from .i18n import supported_locales, TRANSLATIONS, pick_locale
 from .theme import theme_bp
+from .admin import admin_bp
 
 from arithmetic import plugins
 from arithmetic import (
@@ -56,6 +57,7 @@ app.register_blueprint(chat_bp)
 app.register_blueprint(files_bp)
 app.register_blueprint(rooms_bp)
 app.register_blueprint(theme_bp)
+app.register_blueprint(admin_bp)
 
 
 BASIC_OPS = {

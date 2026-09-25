@@ -142,6 +142,92 @@ def on_typing_stop(data):
     }, to=room, include_self=False)
 
 
+
+
+# ---------------------------------------------------------------------
+# WebRTC signaling (Phase 14)
+#
+# The server never touches media. It only relays SDP offers/answers
+# and ICE candidates between peers. Peers discover each other via
+# `webrtc_join` / `webrtc_leave`.
+# ---------------------------------------------------------------------
+# sid -> {room, username}
+WEBRTC_PEERS: dict[str, dict] = {}
+
+
+@socketio.on("webrtc_join")
+def on_webrtc_join(data):
+    room = (data or {}).get("room", "").strip()
+    username = (data or {}).get("username", "guest").strip() or "guest"
+    if not room:
+        emit("webrtc_error", {"error": "room is required"})
+        return
+
+    # Send the joiner the list of existing peers in this room
+    peers = [
+        {"sid": sid, "username": info["username"]}
+        for sid, info in WEBRTC_PEERS.items()
+        if info["room"] == room and sid != request.sid
+    ]
+    WEBRTC_PEERS[request.sid] = {"room": room, "username": username}
+    emit("webrtc_peer_list", {"peers": peers}, to=request.sid)
+
+    # Notify existing peers that a new one arrived
+    emit("webrtc_peer_joined",
+         {"sid": request.sid, "username": username},
+         to=room, include_self=False)
+
+
+@socketio.on("webrtc_leave")
+def on_webrtc_leave(data):
+    info = WEBRTC_PEERS.pop(request.sid, None)
+    if not info:
+        return
+    room = info["room"]
+    emit("webrtc_peer_left",
+         {"sid": request.sid, "username": info["username"]},
+         to=room, include_self=False)
+
+
+@socketio.on("webrtc_offer")
+def on_webrtc_offer(data):
+    target = (data or {}).get("target_sid")
+    if not target:
+        emit("webrtc_error", {"error": "target_sid required"})
+        return
+    info = WEBRTC_PEERS.get(request.sid, {})
+    emit("webrtc_offer", {
+        "from_sid": request.sid,
+        "from_username": info.get("username", "guest"),
+        "sdp": (data or {}).get("sdp"),
+    }, to=target)
+
+
+@socketio.on("webrtc_answer")
+def on_webrtc_answer(data):
+    target = (data or {}).get("target_sid")
+    if not target:
+        return
+    info = WEBRTC_PEERS.get(request.sid, {})
+    emit("webrtc_answer", {
+        "from_sid": request.sid,
+        "from_username": info.get("username", "guest"),
+        "sdp": (data or {}).get("sdp"),
+    }, to=target)
+
+
+@socketio.on("webrtc_ice")
+def on_webrtc_ice(data):
+    target = (data or {}).get("target_sid")
+    if not target:
+        return
+    emit("webrtc_ice", {
+        "from_sid": request.sid,
+        "candidate": (data or {}).get("candidate"),
+    }, to=target)
+
+
 def reset_state():
     """Clear all room state (used in tests)."""
     ROOMS.clear()
+    WEBRTC_PEERS.clear()

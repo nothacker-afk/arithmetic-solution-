@@ -99,3 +99,23 @@ def test_chat_handlers_registered():
             all_events.update(events.keys())
     for ev in ("chat_send", "typing_start", "typing_stop"):
         assert ev in all_events, f"Missing chat handler: {ev}"
+
+
+def test_webrtc_handlers_registered():
+    """Verify WebRTC signaling handlers are registered."""
+    handlers = getattr(socketio.server, "handlers", None)
+    if not isinstance(handlers, dict):
+        return  # introspection unavailable — skip
+    all_events = set()
+    for _, events in handlers.items():
+        if isinstance(events, dict):
+            all_events.update(events.keys())
+    for ev in ("webrtc_join", "webrtc_leave", "webrtc_offer", "webrtc_answer", "webrtc_ice"):
+        assert ev in all_events, f"Missing WebRTC handler: {ev}"
+
+
+def test_webrtc_peers_cleared_on_reset():
+    from web.backend.realtime import WEBRTC_PEERS
+    WEBRTC_PEERS["fake-sid"] = {"room": "r", "username": "u"}
+    reset_state()
+    assert WEBRTC_PEERS == {}

@@ -14,6 +14,7 @@ from .config import Config
 from .database import get_db
 from .auth import require_auth
 from .rate_limit import rate_limit
+from .audit import log_event
 
 rooms_bp = Blueprint("rooms", __name__, url_prefix="/api/rooms")
 
@@ -70,6 +71,9 @@ def claim(room):
             "VALUES (?, ?, 'owner')",
             (room, g.user_id),
         )
+
+    log_event("room.claim", actor_id=g.user_id, resource="room",
+              resource_id=room, details={"has_password": password is not None})
 
     return jsonify({
         "room": room,
@@ -275,6 +279,8 @@ def kick(room, user_id):
         )
         if cur.rowcount == 0:
             return jsonify({"error": "Not a member"}), 404
+    log_event("room.kick", actor_id=g.user_id, resource="room",
+              resource_id=room, details={"kicked_user_id": user_id})
     return jsonify({"kicked": user_id})
 
 
@@ -299,4 +305,6 @@ def delete_room(room):
         conn.execute("DELETE FROM rooms WHERE name = ?", (room,))
         conn.execute("DELETE FROM room_members WHERE room_name = ?", (room,))
         conn.execute("DELETE FROM room_invites WHERE room_name = ?", (room,))
+    log_event("room.delete", actor_id=g.user_id, resource="room",
+              resource_id=room)
     return jsonify({"deleted": room})

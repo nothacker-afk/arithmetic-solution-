@@ -8,6 +8,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 from .config import Config
 from .database import get_db
+from .audit import log_event
 from .validation import (
     validate_username, validate_email, validate_password, ValidationError,
 )
@@ -75,6 +76,9 @@ def register():
         )
         user_id = cur.lastrowid
 
+    log_event("auth.register", actor_id=user_id, resource="user",
+              resource_id=str(user_id), details={"username": username})
+
     return jsonify({
         "user_id": user_id,
         "username": username,
@@ -95,7 +99,13 @@ def login():
         ).fetchone()
 
     if not row or not check_password_hash(row["password_hash"], password):
+        log_event("auth.login", actor_id=None, resource="user",
+                  resource_id=username, status="failed",
+                  details={"reason": "invalid_credentials"})
         return jsonify({"error": "Invalid credentials"}), 401
+
+    log_event("auth.login", actor_id=row["id"], resource="user",
+              resource_id=str(row["id"]), details={"username": row["username"]})
 
     return jsonify({
         "user_id": row["id"],
