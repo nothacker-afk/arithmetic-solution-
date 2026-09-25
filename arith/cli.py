@@ -33,23 +33,30 @@ Usage:
 
 
 def _cmd_serve(argv):
-    # Forward remaining args to web.backend.main
-    sys.argv = [sys.argv[0]] + argv
-    from web.backend.main import main as serve_main  # type: ignore
-    if callable(serve_main):
-        serve_main()
-    else:
-        # main.py uses __main__ guard; import and run socketio directly
-        from web.backend.main import app, socketio  # type: ignore
-        host = "0.0.0.0"
-        port = 8000
-        for i, a in enumerate(argv):
-            if a == "--host" and i + 1 < len(argv):
-                host = argv[i + 1]
-            if a == "--port" and i + 1 < len(argv):
-                port = int(argv[i + 1])
-        socketio.run(app, host=host, port=port,
-                     debug=False, allow_unsafe_werkzeug=True)
+    """Start the Flask + WebSocket server."""
+    from web.backend.main import app, socketio  # type: ignore
+
+    host = "0.0.0.0"
+    port = 8000
+    debug = False
+
+    i = 0
+    while i < len(argv):
+        a = argv[i]
+        if a in ("--host", "-H") and i + 1 < len(argv):
+            host = argv[i + 1]; i += 2; continue
+        if a in ("--port", "-p") and i + 1 < len(argv):
+            port = int(argv[i + 1]); i += 2; continue
+        if a in ("--debug", "-d"):
+            debug = True; i += 1; continue
+        sys.stderr.write(f"Unknown arg for serve: {a}\n")
+        i += 1
+
+    sys.stderr.write(f"\n  Arithmetic Super App running at http://{host}:{port}\n")
+    sys.stderr.write(f"  WebSocket: ws://{host}:{port}/socket.io/\n\n")
+
+    socketio.run(app, host=host, port=port,
+                 debug=debug, allow_unsafe_werkzeug=True)
 
 
 def _cmd_cli(argv):
