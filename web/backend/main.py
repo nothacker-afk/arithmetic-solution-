@@ -28,6 +28,7 @@ from .i18n import supported_locales, TRANSLATIONS, pick_locale
 from .theme import theme_bp
 from .admin import admin_bp
 from .admin_dashboard import admin_dash_bp
+from .account import account_bp
 
 from arithmetic import plugins
 from arithmetic import (
@@ -60,6 +61,7 @@ app.register_blueprint(rooms_bp)
 app.register_blueprint(theme_bp)
 app.register_blueprint(admin_bp)
 app.register_blueprint(admin_dash_bp)
+app.register_blueprint(account_bp)
 
 
 BASIC_OPS = {

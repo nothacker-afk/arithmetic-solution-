@@ -76,3 +76,50 @@ The dashboard shows:
 - Danger zone: clear audit log
 
 All endpoints under `/api/admin/*` require an admin Bearer token.
+
+## Data Ownership & Privacy
+
+Phase 17 gives users full control of their data.
+
+### Data summary
+
+    GET /api/account/data-summary
+
+Returns aggregate counts of what the server holds for the authenticated
+user, plus the documented retention policy for each data class.
+
+### Full export
+
+    GET /api/account/export?format=json
+    GET /api/account/export?format=zip
+
+Downloads every row we have for that user. The ZIP includes the JSON
+plus the raw encrypted blobs of any file they uploaded to rooms.
+
+### Account deletion
+
+    DELETE /api/account  {"password": "...", "confirm": "DELETE"}
+
+Irreversible. Cascade behavior:
+
+| Data | Action |
+|------|--------|
+| Calculations, memberships, preferences | deleted (FK cascade) |
+| Owned rooms with other members | ownership transfers to oldest member |
+| Owned rooms with no other members | room + messages + files deleted |
+| Chat messages authored by user | anonymized to `[deleted]` |
+| File uploads | `uploaded_by` set to `[deleted]` |
+| Audit entries | `actor_id`, `ip`, `user_agent` cleared |
+| Backups | deleted from DB and disk |
+
+### Encrypted backups
+
+Create, list, download, and delete client-side-encrypted backups:
+
+    python -m cli.account backup --token=$JWT --file=notes.db --password=pw
+    python -m cli.account list-backups --token=$JWT
+    python -m cli.account download-backup --token=$JWT --id=<id>
+    python -m cli.account restore --file=backup-<id>.enc --password=pw
+
+Uses AES-GCM with PBKDF2(SHA-256, 100k iterations). The server stores
+only ciphertext.
