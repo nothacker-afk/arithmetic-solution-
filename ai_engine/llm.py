@@ -9,10 +9,18 @@ from typing import Any, Dict
 
 from .parser import parse_and_solve, ParseError
 
+# Module-level import so tests can patch `ai_engine.llm.OpenAI`.
+try:
+    from openai import OpenAI  # type: ignore
+    _OPENAI_AVAILABLE = True
+except ImportError:
+    OpenAI = None  # type: ignore
+    _OPENAI_AVAILABLE = False
+
 
 def is_llm_available() -> bool:
-    """Return True if OPENAI_API_KEY is configured."""
-    return bool(os.environ.get("OPENAI_API_KEY"))
+    """Return True if the openai package is installed and OPENAI_API_KEY is set."""
+    return _OPENAI_AVAILABLE and bool(os.environ.get("OPENAI_API_KEY"))
 
 
 SYSTEM_PROMPT = (
@@ -33,12 +41,6 @@ def llm_solve(text: str) -> Dict[str, Any]:
     the API call fails.
     """
     if not is_llm_available():
-        return parse_and_solve(text)
-
-    try:
-        from openai import OpenAI  # type: ignore
-    except ImportError:
-        # openai package not installed — fall back gracefully
         return parse_and_solve(text)
 
     try:

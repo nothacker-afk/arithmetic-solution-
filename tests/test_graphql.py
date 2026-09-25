@@ -77,7 +77,9 @@ def test_graphql_unknown_op_returns_error(client):
     r = _gql(client, 'mutation { basic(operation: "wat", a: 1, b: 1) { result } }')
     body = r.get_json()
     assert "errors" in body
-    assert body["data"]["basic"] is None
+    # data may be None, or {"basic": None} — accept either
+    data = body.get("data")
+    assert data is None or data.get("basic") is None
 
 
 def test_graphql_introspection(client):

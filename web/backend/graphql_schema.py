@@ -26,6 +26,28 @@ UNARY = {
     "sqrt": sqrt, "cbrt": cbrt, "log10": log10, "sin": sin, "cos": cos,
     "tan": tan, "factorial": factorial, "absolute": absolute,
 }
+def _fmt_num(x):
+    """Format a number, dropping .0 for whole floats."""
+    if isinstance(x, float) and x.is_integer():
+        return str(int(x))
+    return str(x)
+
+
+def _fmt_matrix(m):
+    """Format a matrix so whole floats display as ints."""
+    return "[" + ", ".join(
+        "[" + ", ".join(_fmt_num(c) for c in row) + "]"
+        for row in m
+    ) + "]"
+
+
+def _fmt_value(x):
+    """Format a numeric or matrix result for display."""
+    if isinstance(x, list):
+        return _fmt_matrix(x)
+    return _fmt_num(x)
+
+
 MATRIX = {
     "matrix_add": matrix_add, "matrix_subtract": matrix_subtract,
     "matrix_multiply": matrix_multiply, "matrix_transpose": matrix_transpose,
@@ -80,7 +102,7 @@ class Query:
             raise ValueError(str(e))
         return CalcResult(
             expression=f"{a} {operation} {b}",
-            result=str(result),
+            result=_fmt_value(result),
             operation=operation,
         )
 
@@ -100,7 +122,7 @@ class Mutation:
             raise ValueError(str(e))
         return CalcResult(
             expression=f"{a} {operation} {b}",
-            result=str(result),
+            result=_fmt_value(result),
             operation=operation,
         )
 
@@ -114,7 +136,7 @@ class Mutation:
             raise ValueError(str(e))
         return CalcResult(
             expression=f"{operation}({x})",
-            result=str(result),
+            result=_fmt_value(result),
             operation=operation,
         )
 
@@ -138,7 +160,7 @@ class Mutation:
             raise ValueError(str(e))
         return CalcResult(
             expression=operation,
-            result=str(result),
+            result=_fmt_value(result),
             operation=operation,
         )
 
@@ -150,7 +172,7 @@ class Mutation:
             raise ValueError(str(e))
         return CalcResult(
             expression=f"{name}({', '.join(str(x) for x in args)})",
-            result=str(result),
+            result=_fmt_value(result),
             operation=name,
         )
 
