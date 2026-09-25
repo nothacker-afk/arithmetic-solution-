@@ -29,6 +29,8 @@ from .theme import theme_bp
 from .admin import admin_bp
 from .admin_dashboard import admin_dash_bp
 from .account import account_bp
+from .notifications import notifications_bp
+from .tracing import setup_tracing, current_trace_id
 
 from arithmetic import plugins
 from arithmetic import (
@@ -62,6 +64,7 @@ app.register_blueprint(theme_bp)
 app.register_blueprint(admin_bp)
 app.register_blueprint(admin_dash_bp)
 app.register_blueprint(account_bp)
+app.register_blueprint(notifications_bp)
 
 
 BASIC_OPS = {

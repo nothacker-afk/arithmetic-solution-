@@ -1,0 +1,20 @@
+Arithmetic Super App has been deployed.
+
+Release:   {{ .Release.Name }}
+Namespace: {{ .Release.Namespace }}
+
+{{- if .Values.ingress.enabled }}
+{{- range .Values.ingress.hosts }}
+URL: http://{{ .host }}/
+{{- end }}
+{{- else }}
+Get the service URL:
+
+    kubectl port-forward svc/{{ include "arithmetic.fullname" . }} 8000:{{ .Values.service.port }} -n {{ .Release.Namespace }}
+
+Then open http://localhost:8000
+{{- end }}
+
+Admin dashboard: /admin (first registered user becomes admin)
+Health check:    /api/health
+Metrics:         /metrics

@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: arithmetic-config
+  namespace: arithmetic
+data:
+  LOG_LEVEL: "INFO"
+  LOG_FORMAT: "json"
+  DB_BACKEND: "sqlite"
+  DB_PATH: "/data/arithmetic.db"
+  JWT_EXPIRY_HOURS: "24"
+  MAX_FILE_SIZE_MB: "5"

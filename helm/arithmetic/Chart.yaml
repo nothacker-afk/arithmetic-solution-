@@ -1,0 +1,11 @@
+apiVersion: v2
+name: arithmetic
+description: Arithmetic Super App — modular math engine with real-time collaboration
+type: application
+version: 0.21.0
+appVersion: "0.21.0"
+home: https://github.com/nothacker-afk/arithmetic-solution-
+sources:
+  - https://github.com/nothacker-afk/arithmetic-solution-
+maintainers:
+  - name: nothacker-afk

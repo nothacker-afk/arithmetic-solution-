@@ -134,6 +134,16 @@ EXTRA_TABLES = [
     )
     """,
     "CREATE INDEX IF NOT EXISTS idx_backups_user ON account_backups(user_id, created_at DESC)",
+    """
+    CREATE TABLE IF NOT EXISTS device_tokens (
+        token TEXT PRIMARY KEY,
+        user_id INTEGER NOT NULL,
+        platform TEXT NOT NULL DEFAULT 'unknown',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_device_user ON device_tokens(user_id)",
 ]
 
 

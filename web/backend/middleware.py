@@ -91,6 +91,13 @@ def install_middleware(app) -> None:
         path = _path_template()
         METRICS.record(request.method, path, response.status_code, duration)
         response.headers["X-Request-ID"] = getattr(g, "request_id", "")
+        try:
+            from .tracing import current_trace_id
+            tid = current_trace_id()
+            if tid:
+                response.headers["X-Trace-ID"] = tid
+        except Exception:
+            pass
         if path not in ("/api/health", "/metrics"):
             log.info("request", extra={
                 "request_id": getattr(g, "request_id", ""),

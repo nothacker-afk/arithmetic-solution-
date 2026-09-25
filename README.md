@@ -123,3 +123,71 @@ Create, list, download, and delete client-side-encrypted backups:
 
 Uses AES-GCM with PBKDF2(SHA-256, 100k iterations). The server stores
 only ciphertext.
+
+## `arith` CLI
+
+One command for everything:
+
+    arith serve                    # start web server at :8000
+    arith serve --port 9000        # custom port
+    arith cli                      # interactive calculator
+    arith ai                       # AI natural-language CLI
+    arith demo                     # AI batch demo
+    arith account summary --token=$JWT
+    arith account export --token=$JWT --format=zip --out=me.zip
+    arith version
+    arith doctor                   # environment diagnostics
+    arith help
+
+The old `arithmetic-cli` and `arithmetic-ai` console scripts still work.
+
+## Push Notifications
+
+Register an FCM device token (mobile or web) and receive server pushes
+for room invites and mentions.
+
+    POST /api/notifications/register    {"token": "...", "platform": "android"}
+    POST /api/notifications/unregister  {"token": "..."}
+    GET  /api/notifications/tokens
+    POST /api/notifications/test
+
+Configure FCM:
+
+    export FCM_PROJECT_ID=my-firebase-project
+    export FCM_ACCESS_TOKEN=<short-lived access token>
+    # or point to a service-account JSON for project_id discovery:
+    export FCM_SERVICE_ACCOUNT_JSON=/path/to/service-account.json
+
+Without credentials, `send_push()` logs a dry-run line and returns
+`False`. Nothing crashes, nothing requires Firebase SDK.
+
+## Kubernetes + Helm
+
+    # Raw manifests
+    kubectl apply -f k8s/
+
+    # Helm chart
+    helm install arith ./helm/arithmetic -n arithmetic --create-namespace
+
+See `helm/README.md` for full options.
+
+## OpenTelemetry Tracing
+
+Tracing is opt-in and degrades to a no-op without OTel packages.
+
+    pip install -e ".[observability]"
+    export OTEL_ENABLED=1
+    export OTEL_SERVICE_NAME=arithmetic-super-app
+    export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318/v1/traces
+    arith serve
+
+Without `OTEL_EXPORTER_OTLP_ENDPOINT`, spans print to the console.
+Every response gets an `X-Trace-ID` header when a span is active.
+
+The `@trace("name")` decorator wraps any function:
+
+    from web.backend.tracing import trace
+
+    @trace("arithmetic.add")
+    def add(a, b):
+        return a + b
