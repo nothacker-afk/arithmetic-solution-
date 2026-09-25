@@ -123,5 +123,7 @@ def me():
             (g.user_id,),
         ).fetchone()
     if not row:
-        return jsonify({"error": "User not found"}), 404
+        # Token references a user that no longer exists (deleted account).
+        # Treat as an invalid/stale credential rather than a missing resource.
+        return jsonify({"error": "Account no longer exists"}), 401
     return jsonify(dict(row))
