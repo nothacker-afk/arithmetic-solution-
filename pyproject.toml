@@ -4,21 +4,24 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "arithmetic-super-app"
-version = "0.3.1"
-description = "A modular arithmetic engine with CLI, web, and AI-powered natural language interfaces."
+version = "0.4.0"
+description = "Modular arithmetic engine with CLI, web, AI, and full-stack auth + history."
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
 authors = [{name = "nothacker-afk"}]
-keywords = ["arithmetic", "math", "calculator", "matrix", "scientific", "cli", "web", "ai", "nlp"]
+keywords = ["arithmetic", "math", "calculator", "matrix", "scientific",
+            "cli", "web", "ai", "nlp", "jwt", "fullstack"]
 
 [project.optional-dependencies]
 dev = ["pytest>=7.0"]
 web = [
     "flask>=3.0",
     "flask-cors>=4.0",
+    "PyJWT>=2.8",
 ]
 ai = ["openai>=1.0"]
+mobile = ["flet>=0.24"]
 
 [project.scripts]
 arithmetic-cli = "cli.main:main"

@@ -1,0 +1,19 @@
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: arithmetic-super-app:latest
+    container_name: arithmetic-api
+    ports:
+      - "8000:8000"
+    environment:
+      SECRET_KEY: ${SECRET_KEY:-dev-secret-change-me}
+      JWT_SECRET: ${JWT_SECRET:-dev-jwt-secret-change-me}
+      DB_PATH: /data/arithmetic.db
+    volumes:
+      - arithmetic_data:/data
+    restart: unless-stopped
+
+volumes:
+  arithmetic_data:
