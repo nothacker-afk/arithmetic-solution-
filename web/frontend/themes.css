@@ -1,0 +1,63 @@
+/* Theme overrides for Arithmetic Super App.
+ * Uses higher-specificity selectors than the base <style> so it wins
+ * by cascade order without !important.
+ */
+
+html.theme-dark body {
+    background: #0f172a;
+    color: #e2e8f0;
+}
+html.theme-dark .container {
+    background: #1e293b;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+html.theme-dark input,
+html.theme-dark select {
+    background: #0f172a;
+    color: #e2e8f0;
+    border-color: #334155;
+}
+html.theme-dark .tab { background: #0f172a; }
+html.theme-dark .result { background: #0f172a; }
+html.theme-dark .history-item { background: #0f172a; }
+html.theme-dark #rt-chat-log { background: #0f172a; }
+html.theme-dark .modal-content { background: #1e293b; }
+
+html.theme-light body {
+    background: #f1f5f9;
+    color: #0f172a;
+}
+html.theme-light .container {
+    background: #ffffff;
+    box-shadow: 0 20px 60px rgba(15, 23, 42, 0.1);
+}
+html.theme-light h1 {
+    background: linear-gradient(90deg, #0284c7, #6366f1);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+html.theme-light input,
+html.theme-light select {
+    background: #f8fafc;
+    color: #0f172a;
+    border-color: #cbd5e1;
+}
+html.theme-light input:focus,
+html.theme-light select:focus {
+    outline: 2px solid #0284c7;
+}
+html.theme-light .tab { background: #f1f5f9; color: #334155; }
+html.theme-light .tab.active { background: #0284c7; color: #ffffff; }
+html.theme-light .result { background: #f8fafc; border-left-color: #0284c7; }
+html.theme-light .history-item { background: #f8fafc; color: #334155; }
+html.theme-light .history-item code { color: #0369a1; }
+html.theme-light #rt-chat-log { background: #f8fafc; }
+html.theme-light .modal { background: rgba(15, 23, 42, 0.4); }
+html.theme-light .modal-content { background: #ffffff; }
+html.theme-light #user-label { color: #475569; }
+html.theme-light .muted { color: #64748b; }
+html.theme-light p.subtitle,
+html.theme-light p.muted { color: #64748b; }
+html.theme-light #auth-btn { background: #e2e8f0; color: #0f172a; }
+html.theme-light #auth-btn:hover { background: #cbd5e1; }
+html.theme-light .history-del { background: #fee2e2; color: #991b1b; }

@@ -24,6 +24,8 @@ from .realtime import socketio
 from .chat import chat_bp
 from .files import files_bp
 from .rooms import rooms_bp
+from .i18n import supported_locales, TRANSLATIONS, pick_locale
+from .theme import theme_bp
 
 from arithmetic import plugins
 from arithmetic import (
@@ -53,6 +55,7 @@ app.register_blueprint(history_bp)
 app.register_blueprint(chat_bp)
 app.register_blueprint(files_bp)
 app.register_blueprint(rooms_bp)
+app.register_blueprint(theme_bp)
 
 
 BASIC_OPS = {
@@ -271,6 +274,31 @@ def service_worker():
 @app.route("/static/<path:filename>")
 def static_files(filename):
     return send_from_directory(str(FRONTEND_DIR), filename)
+
+
+
+
+# -------------------------------------------------------------------------
+# i18n (Phase 12)
+# -------------------------------------------------------------------------
+@app.route("/api/i18n/locales")
+def i18n_locales():
+    return jsonify({"default": "en", "locales": supported_locales()})
+
+
+@app.route("/api/i18n/<locale>")
+def i18n_get(locale):
+    locale = locale.lower()
+    if locale not in TRANSLATIONS:
+        return jsonify({"error": "Unsupported locale"}), 404
+    return jsonify({"locale": locale, "strings": TRANSLATIONS[locale]})
+
+
+@app.route("/api/i18n/detect")
+def i18n_detect():
+    """Return the locale best matching the client's Accept-Language."""
+    picked = pick_locale(request.headers.get("Accept-Language", ""))
+    return jsonify({"locale": picked})
 
 
 if __name__ == "__main__":

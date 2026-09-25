@@ -105,6 +105,14 @@ CREATE TABLE IF NOT EXISTS room_invites (
 );
 
 CREATE INDEX IF NOT EXISTS idx_invites_room ON room_invites(room_name);
+
+CREATE TABLE IF NOT EXISTS user_preferences (
+    user_id INTEGER PRIMARY KEY,
+    theme TEXT NOT NULL DEFAULT 'auto',
+    language TEXT NOT NULL DEFAULT 'en',
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
 """
 
 

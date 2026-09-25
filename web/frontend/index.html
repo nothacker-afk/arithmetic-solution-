@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Arithmetic Super App</title>
 <link rel="manifest" href="/manifest.json" />
+  <link rel="stylesheet" href="/static/themes.css" />
+  <script src="/static/i18n.js"></script>
 <meta name="theme-color" content="#38bdf8" />
 <link rel="apple-touch-icon" href="/static/icon-192.svg" />
 <style>
@@ -75,11 +77,13 @@
 <body>
 <div class="container">
     <header>
-        <h1>Arithmetic Super App</h1>
+        <h1 data-i18n="app.title">Arithmetic Super App</h1>
         <div id="auth-status">
             <span id="user-label">Guest</span>
-            <button id="install-btn" style="display:none;background:#059669;color:#e2e8f0;">Install</button>
-            <button id="auth-btn">Login</button>
+            <button id="theme-btn" title="Theme" style="background:#334155;color:#e2e8f0;">🌓</button>
+            <button id="lang-btn" title="Language" style="background:#334155;color:#e2e8f0;">EN</button>
+            <button id="install-btn" style="display:none;background:#059669;color:#e2e8f0;" data-i18n="btn.install">Install</button>
+            <button id="auth-btn" data-i18n="btn.login">Login</button>
         </div>
     </header>
 
@@ -98,12 +102,12 @@
     </div>
 
     <div class="tabs">
-        <div class="tab active" data-tab="basic">Basic</div>
-        <div class="tab" data-tab="scientific">Scientific</div>
-        <div class="tab" data-tab="matrix">Matrix</div>
-        <div class="tab" data-tab="ai">AI</div>
-        <div class="tab" data-tab="history">History</div>
-        <div class="tab" data-tab="realtime">Live</div>
+        <div class="tab active" data-tab="basic" data-i18n="tabs.basic">Basic</div>
+        <div class="tab" data-tab="scientific" data-i18n="tabs.scientific">Scientific</div>
+        <div class="tab" data-tab="matrix" data-i18n="tabs.matrix">Matrix</div>
+        <div class="tab" data-tab="ai" data-i18n="tabs.ai">AI</div>
+        <div class="tab" data-tab="history" data-i18n="tabs.history">History</div>
+        <div class="tab" data-tab="realtime" data-i18n="tabs.live">Live</div>
     </div>
 
     <!-- Basic -->
@@ -302,10 +306,10 @@ function updateAuthUI() {
     const btn = document.getElementById("auth-btn");
     if (state.token && state.username) {
         label.textContent = state.username;
-        btn.textContent = "Logout";
+        btn.textContent = i18n.t("btn.logout", "Logout");
     } else {
-        label.textContent = "Guest";
-        btn.textContent = "Login";
+        label.textContent = i18n.t("result.guest", "Guest");
+        btn.textContent = i18n.t("btn.login", "Login");
     }
 }
 
@@ -568,7 +572,91 @@ window.addEventListener("appinstalled", () => {
     deferredInstallPrompt = null;
 });
 
+
+// ============ Theme (Phase 12) ============
+const THEME_CYCLE = ["auto", "light", "dark"];
+
+function applyTheme(mode) {
+    document.documentElement.classList.remove("theme-light", "theme-dark");
+    if (mode === "auto") {
+        const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        document.documentElement.classList.add(prefersDark ? "theme-dark" : "theme-light");
+    } else {
+        document.documentElement.classList.add("theme-" + mode);
+    }
+    localStorage.setItem("theme", mode);
+    const btn = document.getElementById("theme-btn");
+    if (btn) btn.textContent = mode === "auto" ? "🌓" : mode === "light" ? "☀️" : "🌙";
+}
+
+function cycleTheme() {
+    const cur = localStorage.getItem("theme") || "auto";
+    const next = THEME_CYCLE[(THEME_CYCLE.indexOf(cur) + 1) % THEME_CYCLE.length];
+    applyTheme(next);
+    if (state.token) {
+        api("/api/prefs", {
+            method: "PUT",
+            body: JSON.stringify({ theme: next, language: i18n.currentLocale() }),
+        }).catch(() => {});
+    }
+}
+
+document.addEventListener("click", (e) => {
+    if (e.target.id === "theme-btn") cycleTheme();
+});
+
+// ============ Language (Phase 12) ============
+async function cycleLanguage() {
+    const available = i18n.available();
+    const cur = i18n.currentLocale();
+    const next = available[(available.indexOf(cur) + 1) % available.length];
+    await i18n.load(next);
+    updateSwitcherLabel();
+    updateAuthUI();
+    if (state.token) {
+        api("/api/prefs", {
+            method: "PUT",
+            body: JSON.stringify({ theme: localStorage.getItem("theme") || "auto", language: next }),
+        }).catch(() => {});
+    }
+}
+
+function updateSwitcherLabel() {
+    const btn = document.getElementById("lang-btn");
+    if (btn) btn.textContent = i18n.currentLocale().toUpperCase();
+}
+
+document.addEventListener("click", (e) => {
+    if (e.target.id === "lang-btn") cycleLanguage();
+});
+
+// React to OS theme changes when in auto mode
+if (window.matchMedia) {
+    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+        if ((localStorage.getItem("theme") || "auto") === "auto") applyTheme("auto");
+    });
+}
+
 // ============ Init ============
+applyTheme(localStorage.getItem("theme") || "auto");
+
+// Initial language: saved -> navigator -> backend detect
+(async () => {
+    const saved = localStorage.getItem("language");
+    if (saved) {
+        await i18n.load(saved);
+    } else {
+        try {
+            const detected = await api("/api/i18n/detect");
+            await i18n.load(detected.locale || i18n.detectFromNavigator());
+        } catch {
+            await i18n.load(i18n.detectFromNavigator());
+        }
+    }
+    updateSwitcherLabel();
+    updateAuthUI();
+})();
+
 updateAuthUI();
 rtHandleInviteFromURL();
 </script>
