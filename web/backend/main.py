@@ -41,8 +41,10 @@ FRONTEND_DIR = Path(__file__).parent.parent / "frontend"
 app = Flask(__name__, static_folder=None)
 CORS(app)
 
+# Phase 6: bind SocketIO to the Flask app
+socketio.init_app(app)
+
 # Phase 4: register auth + history + init database
-init_db()
 app.register_blueprint(auth_bp)
 app.register_blueprint(history_bp)
 
@@ -209,6 +211,22 @@ def call_plugin(name):
     except plugins.PluginError as e:
         return jsonify({"error": str(e)}), 400
 
+
+
+
+# -------------------------------------------------------------------------
+# Lazy DB initialization (avoids import-time side effects)
+# -------------------------------------------------------------------------
+_db_initialized = False
+
+
+@app.before_request
+def _ensure_db_initialized():
+    global _db_initialized
+    if not _db_initialized:
+        from .database import init_db
+        init_db()
+        _db_initialized = True
 
 if __name__ == "__main__":
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 8000
