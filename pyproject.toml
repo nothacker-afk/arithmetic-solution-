@@ -9,15 +9,8 @@ description = "A modular arithmetic engine supporting basic, scientific, and mat
 readme = "README.md"
 requires-python = ">=3.8"
 license = {text = "MIT"}
-authors = [
-    {name = "nothacker-afk"}
-]
+authors = [{name = "nothacker-afk"}]
 keywords = ["arithmetic", "math", "calculator", "matrix", "scientific"]
-classifiers = [
-    "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: MIT License",
-    "Operating System :: OS Independent",
-]
 
 [project.optional-dependencies]
 dev = ["pytest>=7.0"]
