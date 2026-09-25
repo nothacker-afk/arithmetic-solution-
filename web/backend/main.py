@@ -16,6 +16,10 @@ from pathlib import Path
 from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 
+from .database import init_db
+from .auth import auth_bp
+from .history import history_bp
+
 from arithmetic import (
     add, subtract, multiply, divide, power, modulo, floor_divide,
     sqrt, cbrt, log10, sin, cos, tan, factorial, absolute,
@@ -33,6 +37,11 @@ except ImportError:
 FRONTEND_DIR = Path(__file__).parent.parent / "frontend"
 app = Flask(__name__, static_folder=None)
 CORS(app)
+
+# Phase 4: register auth + history + init database
+init_db()
+app.register_blueprint(auth_bp)
+app.register_blueprint(history_bp)
 
 
 BASIC_OPS = {
