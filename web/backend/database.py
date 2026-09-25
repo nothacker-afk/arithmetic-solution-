@@ -50,6 +50,17 @@ CREATE TABLE IF NOT EXISTS calculations (
 );
 
 CREATE INDEX IF NOT EXISTS idx_calc_user ON calculations(user_id);
+
+CREATE TABLE IF NOT EXISTS chat_messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    room_id TEXT NOT NULL,
+    username TEXT NOT NULL,
+    body TEXT NOT NULL,
+    encrypted INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_chat_room ON chat_messages(room_id, id);
 """
 
 

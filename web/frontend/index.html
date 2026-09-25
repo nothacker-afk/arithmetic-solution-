@@ -70,6 +70,7 @@
     .muted { color: #64748b; font-size: .8rem; text-align: center; padding: 20px; }
 </style>
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="/static/crypto.js"></script>
 </head>
 <body>
 <div class="container">
@@ -201,6 +202,29 @@
             <option value="divide">Divide</option>
         </select>
         <button class="primary" onclick="rtBroadcast()">Broadcast to room</button>
+
+        
+        <label style="margin-top:20px;">Room chat</label>
+        <div class="row">
+            <div>
+                <label style="margin-top:0;">
+                    <input type="checkbox" id="rt-e2e" style="width:auto;margin-right:6px;"
+                           onchange="rtToggleE2E()" />
+                    Encrypt (E2E)
+                </label>
+            </div>
+        </div>
+        <input type="password" id="rt-passphrase" placeholder="Room passphrase (E2E only)"
+               style="display:none;" />
+        <div id="rt-chat-log" style="background:#0f172a;border-radius:6px;padding:10px;
+             max-height:200px;overflow-y:auto;margin-bottom:8px;font-size:.82rem;
+             min-height:60px;"></div>
+        <div id="rt-typing" class="muted" style="text-align:left;height:1em;"></div>
+        <div class="row">
+            <div style="flex:4;"><input type="text" id="rt-chat-input"
+                placeholder="Type a message…" onkeydown="rtChatKeydown(event)" /></div>
+            <div style="flex:1;"><button class="primary" onclick="rtSendChat()">Send</button></div>
+        </div>
 
         <label style="margin-top:10px;">Live feed</label>
         <div id="rt-feed"></div>

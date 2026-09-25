@@ -93,6 +93,55 @@ def on_ping(data):
         emit("presence", {"users": _room_users(room)}, to=request.sid)
 
 
+
+
+# ---------------------------------------------------------------------
+# Chat events (Phase 9)
+# ---------------------------------------------------------------------
+@socketio.on("chat_send")
+def on_chat_send(data):
+    """Broadcast a chat message to everyone in the room.
+
+    The server does NOT persist here — persistence happens via POST
+    /api/chat/<room>, so clients control whether messages are stored.
+    This keeps E2E flow clean: ciphertext is broadcast verbatim.
+    """
+    room = (data or {}).get("room", "").strip()
+    if not room:
+        emit("error", {"error": "room is required"})
+        return
+
+    payload = {
+        "username": (data or {}).get("username", "guest"),
+        "body": (data or {}).get("body", ""),
+        "encrypted": bool((data or {}).get("encrypted")),
+        "id": (data or {}).get("id"),
+    }
+    emit("chat_message", payload, to=room, include_self=False)
+
+
+@socketio.on("typing_start")
+def on_typing_start(data):
+    room = (data or {}).get("room", "").strip()
+    if not room:
+        return
+    emit("typing", {
+        "username": (data or {}).get("username", "guest"),
+        "state": "start",
+    }, to=room, include_self=False)
+
+
+@socketio.on("typing_stop")
+def on_typing_stop(data):
+    room = (data or {}).get("room", "").strip()
+    if not room:
+        return
+    emit("typing", {
+        "username": (data or {}).get("username", "guest"),
+        "state": "stop",
+    }, to=room, include_self=False)
+
+
 def reset_state():
     """Clear all room state (used in tests)."""
     ROOMS.clear()

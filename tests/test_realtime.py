@@ -86,3 +86,16 @@ def test_socketio_handlers_registered():
         assert event in all_events, f"Missing socket handler: {event}"
 
 
+
+
+def test_chat_handlers_registered():
+    """Verify chat-related socket handlers are registered."""
+    handlers = getattr(socketio.server, "handlers", None)
+    if not isinstance(handlers, dict):
+        return  # introspection unavailable — skip
+    all_events = set()
+    for _, events in handlers.items():
+        if isinstance(events, dict):
+            all_events.update(events.keys())
+    for ev in ("chat_send", "typing_start", "typing_stop"):
+        assert ev in all_events, f"Missing chat handler: {ev}"
