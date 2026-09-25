@@ -120,6 +120,7 @@ def init_db() -> None:
 def reset_db() -> None:
     with get_db() as conn:
         conn.executescript("""
+            DROP TABLE IF EXISTS account_backups;
             DROP TABLE IF EXISTS audit_log;
             DROP TABLE IF EXISTS user_preferences;
             DROP TABLE IF EXISTS room_invites;

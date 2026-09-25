@@ -1,38 +1,23 @@
-"""Database layer using stdlib sqlite3 (no compilation needed on Termux).
+"""SQLite layer + DB_BACKEND dispatch.
 
-The DB path is read dynamically so tests can override it via the
-DB_PATH environment variable.
+`init_db()` is idempotent and self-healing: it runs the full SCHEMA
+plus an explicit `_ensure_extra_tables()` step that creates any tables
+introduced after the initial schema, so upgrades never miss a table.
 """
-import os
+import os as _os
 import sqlite3
 from contextlib import contextmanager
 from pathlib import Path
 
-
-
-
-# ---------------------------------------------------------------------
-# Backend dispatch (Phase 15)
-# ---------------------------------------------------------------------
-# When DB_BACKEND=postgres, database_pg provides the same get_db/init_db
-# interface. On Termux (default), sqlite3 is used directly below.
-import os as _os
-
-if _os.environ.get("DB_BACKEND", "sqlite").lower() == "postgres":
-    from .database_pg import get_db, init_db, reset_db  # noqa: F401
-    _USE_PG = True
-else:
-    _USE_PG = False
+_USE_PG = _os.environ.get("DB_BACKEND", "sqlite").lower() == "postgres"
 
 
 def get_db_path() -> str:
-    """Return the current database path (env-driven)."""
-    return os.environ.get("DB_PATH", str(Path.home() / ".arithmetic.db"))
+    return _os.environ.get("DB_PATH", str(Path.home() / ".arithmetic.db"))
 
 
 @contextmanager
 def _sqlite_get_db():
-    """Context manager yielding a sqlite3 connection."""
     conn = sqlite3.connect(get_db_path())
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
@@ -54,7 +39,6 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-
 CREATE TABLE IF NOT EXISTS calculations (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
@@ -64,9 +48,7 @@ CREATE TABLE IF NOT EXISTS calculations (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
-
 CREATE INDEX IF NOT EXISTS idx_calc_user ON calculations(user_id);
-
 CREATE TABLE IF NOT EXISTS chat_messages (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     room_id TEXT NOT NULL,
@@ -75,9 +57,7 @@ CREATE TABLE IF NOT EXISTS chat_messages (
     encrypted INTEGER NOT NULL DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-
 CREATE INDEX IF NOT EXISTS idx_chat_room ON chat_messages(room_id, id);
-
 CREATE TABLE IF NOT EXISTS room_files (
     id TEXT PRIMARY KEY,
     room_id TEXT NOT NULL,
@@ -87,9 +67,7 @@ CREATE TABLE IF NOT EXISTS room_files (
     uploaded_by TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-
 CREATE INDEX IF NOT EXISTS idx_files_room ON room_files(room_id, created_at DESC);
-
 CREATE TABLE IF NOT EXISTS rooms (
     name TEXT PRIMARY KEY,
     owner_id INTEGER NOT NULL,
@@ -98,7 +76,6 @@ CREATE TABLE IF NOT EXISTS rooms (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE
 );
-
 CREATE TABLE IF NOT EXISTS room_members (
     room_name TEXT NOT NULL,
     user_id INTEGER NOT NULL,
@@ -108,9 +85,7 @@ CREATE TABLE IF NOT EXISTS room_members (
     FOREIGN KEY (room_name) REFERENCES rooms(name) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
-
 CREATE INDEX IF NOT EXISTS idx_members_user ON room_members(user_id);
-
 CREATE TABLE IF NOT EXISTS room_invites (
     token TEXT PRIMARY KEY,
     room_name TEXT NOT NULL,
@@ -119,9 +94,14 @@ CREATE TABLE IF NOT EXISTS room_invites (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (room_name) REFERENCES rooms(name) ON DELETE CASCADE
 );
-
 CREATE INDEX IF NOT EXISTS idx_invites_room ON room_invites(room_name);
-
+CREATE TABLE IF NOT EXISTS user_preferences (
+    user_id INTEGER PRIMARY KEY,
+    theme TEXT NOT NULL DEFAULT 'auto',
+    language TEXT NOT NULL DEFAULT 'en',
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
 CREATE TABLE IF NOT EXISTS audit_log (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     action TEXT NOT NULL,
@@ -134,37 +114,54 @@ CREATE TABLE IF NOT EXISTS audit_log (
     user_agent TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-
 CREATE INDEX IF NOT EXISTS idx_audit_actor ON audit_log(actor_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_audit_action ON audit_log(action, created_at DESC);
-
-CREATE TABLE IF NOT EXISTS user_preferences (
-    user_id INTEGER PRIMARY KEY,
-    theme TEXT NOT NULL DEFAULT 'auto',
-    language TEXT NOT NULL DEFAULT 'en',
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-);
 """
 
 
-def _sqlite_init_db() -> None:
-    """Create tables if they don't exist."""
-    with get_db() as conn:
+# ---------------------------------------------------------------------
+# Tables added after the original schema go here (idempotent).
+# ---------------------------------------------------------------------
+EXTRA_TABLES = [
+    """
+    CREATE TABLE IF NOT EXISTS account_backups (
+        id TEXT PRIMARY KEY,
+        user_id INTEGER NOT NULL,
+        label TEXT,
+        size_bytes INTEGER NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_backups_user ON account_backups(user_id, created_at DESC)",
+]
+
+
+def _ensure_extra_tables(conn) -> None:
+    """Run EXTRA_TABLES against the given connection."""
+    for stmt in EXTRA_TABLES:
+        conn.execute(stmt)
+
+
+def _sqlite_init_db():
+    with _sqlite_get_db() as conn:
         conn.executescript(SCHEMA)
+        _ensure_extra_tables(conn)
 
 
-def _sqlite_reset_db() -> None:
-    """Drop and recreate all tables (used in tests)."""
-    with get_db() as conn:
-        conn.executescript("""
-            DROP TABLE IF EXISTS calculations;
-            DROP TABLE IF EXISTS users;
-        """)
+def _sqlite_reset_db():
+    with _sqlite_get_db() as conn:
+        for t in ("account_backups", "audit_log", "user_preferences",
+                  "room_invites", "room_members", "rooms", "room_files",
+                  "chat_messages", "calculations", "users"):
+            conn.execute(f"DROP TABLE IF EXISTS {t}")
         conn.executescript(SCHEMA)
+        _ensure_extra_tables(conn)
 
-# Aliases for the sqlite backend (used when DB_BACKEND != postgres)
-if not _USE_PG:
+
+if _USE_PG:
+    from .database_pg import get_db, init_db, reset_db  # noqa: F401
+else:
     get_db = _sqlite_get_db
     init_db = _sqlite_init_db
     reset_db = _sqlite_reset_db
