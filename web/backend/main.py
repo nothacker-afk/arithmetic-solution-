@@ -20,7 +20,9 @@ from .database import init_db
 from .auth import auth_bp
 from .history import history_bp
 from .rate_limit import rate_limit
+from .realtime import socketio
 
+from arithmetic import plugins
 from arithmetic import (
     add, subtract, multiply, divide, power, modulo, floor_divide,
     sqrt, cbrt, log10, sin, cos, tan, factorial, absolute,
@@ -185,7 +187,31 @@ def ai_solve():
 # -------------------------------------------------------------------------
 # Entrypoint
 # -------------------------------------------------------------------------
+
+
+# -------------------------------------------------------------------------
+# Plugins (Phase 6)
+# -------------------------------------------------------------------------
+@app.route("/api/plugins", methods=["GET"])
+def list_registered_plugins():
+    return jsonify({"plugins": plugins.list_plugins()})
+
+
+@app.route("/api/plugins/<name>", methods=["POST"])
+def call_plugin(name):
+    data = request.get_json(silent=True) or {}
+    args = data.get("args", [])
+    if not isinstance(args, list):
+        return jsonify({"error": "args must be a list"}), 400
+    try:
+        result = plugins.call(name, *args)
+        return jsonify({"plugin": name, "args": args, "result": result})
+    except plugins.PluginError as e:
+        return jsonify({"error": str(e)}), 400
+
+
 if __name__ == "__main__":
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 8000
-    sys.stderr.write(f"\n  Arithmetic Super App running at http://127.0.0.1:{port}\n\n")
-    app.run(host="0.0.0.0", port=port, debug=False)
+    sys.stderr.write(f"\n  Arithmetic Super App running at http://127.0.0.1:{port}\n")
+    sys.stderr.write(f"  WebSocket: ws://127.0.0.1:{port}/socket.io/\n\n")
+    socketio.run(app, host="0.0.0.0", port=port, debug=False, allow_unsafe_werkzeug=True)

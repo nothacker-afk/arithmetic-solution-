@@ -66,6 +66,7 @@
         width: auto; margin: 0; }
     .muted { color: #64748b; font-size: .8rem; text-align: center; padding: 20px; }
 </style>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 </head>
 <body>
 <div class="container">
@@ -97,6 +98,7 @@
         <div class="tab" data-tab="matrix">Matrix</div>
         <div class="tab" data-tab="ai">AI</div>
         <div class="tab" data-tab="history">History</div>
+        <div class="tab" data-tab="realtime">Live</div>
     </div>
 
     <!-- Basic -->
@@ -167,6 +169,37 @@
     <div class="tab-panel" id="panel-history">
         <div id="history-list"><div class="muted">Login to see your history.</div></div>
         <button class="primary" onclick="loadHistory()">Refresh</button>
+    </div>
+
+
+    <!-- Real-time -->
+    <div class="tab-panel" id="panel-realtime">
+        <label>Room name (share with friends)</label>
+        <input type="text" id="rt-room" value="demo-room" />
+        <label>Your display name</label>
+        <input type="text" id="rt-user" value="guest" />
+        <div class="row">
+            <div><button class="primary" onclick="rtJoin()">Join</button></div>
+            <div><button class="primary" onclick="rtLeave()">Leave</button></div>
+        </div>
+        <p class="muted" id="rt-status" style="text-align:left;">Not connected.</p>
+        <div id="rt-users" class="muted" style="text-align:left;"></div>
+
+        <label style="margin-top:10px;">Quick calculation (broadcasts to room)</label>
+        <div class="row">
+            <div><input type="number" id="rt-a" value="7" step="any" /></div>
+            <div><input type="number" id="rt-b" value="6" step="any" /></div>
+        </div>
+        <select id="rt-op">
+            <option value="add">Add</option>
+            <option value="subtract">Subtract</option>
+            <option value="multiply">Multiply</option>
+            <option value="divide">Divide</option>
+        </select>
+        <button class="primary" onclick="rtBroadcast()">Broadcast to room</button>
+
+        <label style="margin-top:10px;">Live feed</label>
+        <div id="rt-feed"></div>
     </div>
 
     <div class="result" id="result">Ready.</div>
@@ -360,6 +393,95 @@ async function deleteHistory(id) {
         await api("/api/history/" + id, { method: "DELETE" });
         loadHistory();
     } catch (e) { showResult("Error: " + e.message, true); }
+}
+
+
+// ============ Real-time collaboration ============
+let socket = null;
+let currentRoom = null;
+
+function rtSetStatus(msg) {
+    document.getElementById("rt-status").textContent = msg;
+}
+
+function rtSetUsers(users) {
+    document.getElementById("rt-users").textContent =
+        users && users.length ? "In room: " + users.join(", ") : "";
+}
+
+function rtAddFeedLine(text) {
+    const feed = document.getElementById("rt-feed");
+    const line = document.createElement("div");
+    line.className = "history-item";
+    line.innerHTML = text;
+    feed.prepend(line);
+    while (feed.children.length > 30) feed.removeChild(feed.lastChild);
+}
+
+function rtEnsureSocket() {
+    if (socket) return socket;
+    socket = io(API);
+    socket.on("connect", () => rtSetStatus("Connected."));
+    socket.on("disconnect", () => rtSetStatus("Disconnected."));
+    socket.on("joined", (data) => {
+        currentRoom = data.room;
+        rtSetStatus("Joined room: " + data.room);
+        rtSetUsers(data.users);
+    });
+    socket.on("user_joined", (data) => {
+        rtAddFeedLine(`<em>${data.username} joined</em>`);
+        rtSetUsers(data.users);
+    });
+    socket.on("user_left", (data) => {
+        rtAddFeedLine(`<em>${data.username} left</em>`);
+        rtSetUsers(data.users);
+    });
+    socket.on("calc_received", (data) => {
+        rtAddFeedLine(`<code>${data.username}</code>: ${data.expression} = <strong>${data.result}</strong>`);
+    });
+    socket.on("presence", (data) => rtSetUsers(data.users));
+    socket.on("error", (data) => rtSetStatus("Error: " + (data.error || "unknown")));
+    return socket;
+}
+
+function rtJoin() {
+    const room = document.getElementById("rt-room").value.trim();
+    const user = document.getElementById("rt-user").value.trim() || "guest";
+    if (!room) { rtSetStatus("Room name required."); return; }
+    rtEnsureSocket().emit("join", { room, username: user });
+}
+
+function rtLeave() {
+    if (!socket || !currentRoom) return;
+    socket.emit("leave", { room: currentRoom });
+    currentRoom = null;
+    rtSetStatus("Left room.");
+    rtSetUsers([]);
+}
+
+async function rtBroadcast() {
+    if (!socket || !currentRoom) {
+        rtSetStatus("Join a room first.");
+        return;
+    }
+    const user = document.getElementById("rt-user").value.trim() || "guest";
+    const op = document.getElementById("rt-op").value;
+    const a = parseFloat(document.getElementById("rt-a").value);
+    const b = parseFloat(document.getElementById("rt-b").value);
+    try {
+        const data = await api("/api/basic", {
+            method: "POST",
+            body: JSON.stringify({ operation: op, a, b }),
+        });
+        rtAddFeedLine(`<code>${user}</code> (you): ${data.expression} = <strong>${data.result}</strong>`);
+        socket.emit("broadcast_calc", {
+            room: currentRoom,
+            username: user,
+            expression: data.expression,
+            result: data.result,
+            operation: op,
+        });
+    } catch (e) { rtSetStatus("Error: " + e.message); }
 }
 
 // ============ Init ============
