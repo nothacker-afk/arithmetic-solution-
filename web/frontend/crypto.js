@@ -72,3 +72,49 @@ async function decryptMessage(key, b64) {
     );
     return new TextDecoder().decode(plaintext);
 }
+
+/* Byte-level encryption (for file sharing).
+ * Input: ArrayBuffer/Uint8Array. Output: base64 string (iv || ciphertext).
+ */
+async function encryptBytes(key, bytes) {
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const ciphertext = await crypto.subtle.encrypt(
+        { name: "AES-GCM", iv },
+        key,
+        bytes,
+    );
+    const combined = new Uint8Array(iv.length + ciphertext.byteLength);
+    combined.set(iv, 0);
+    combined.set(new Uint8Array(ciphertext), iv.length);
+    return toBase64(combined);
+}
+
+async function decryptBytes(key, b64) {
+    const combined = fromBase64(b64);
+    const iv = combined.slice(0, 12);
+    const ciphertext = combined.slice(12);
+    const plaintext = await crypto.subtle.decrypt(
+        { name: "AES-GCM", iv },
+        key,
+        ciphertext,
+    );
+    return new Uint8Array(plaintext);
+}
+
+/* Read a File/Blob into a Uint8Array. */
+async function fileToBytes(file) {
+    return new Uint8Array(await file.arrayBuffer());
+}
+
+/* Trigger a browser download of a Uint8Array. */
+function downloadBytes(bytes, filename, mime = "application/octet-stream") {
+    const blob = new Blob([bytes], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+}

@@ -61,6 +61,18 @@ CREATE TABLE IF NOT EXISTS chat_messages (
 );
 
 CREATE INDEX IF NOT EXISTS idx_chat_room ON chat_messages(room_id, id);
+
+CREATE TABLE IF NOT EXISTS room_files (
+    id TEXT PRIMARY KEY,
+    room_id TEXT NOT NULL,
+    filename TEXT NOT NULL,
+    size_bytes INTEGER NOT NULL,
+    encrypted INTEGER NOT NULL DEFAULT 1,
+    uploaded_by TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_files_room ON room_files(room_id, created_at DESC);
 """
 
 

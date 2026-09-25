@@ -226,6 +226,12 @@
             <div style="flex:1;"><button class="primary" onclick="rtSendChat()">Send</button></div>
         </div>
 
+        
+        <label style="margin-top:20px;">Room files (E2E encrypted)</label>
+        <input type="file" id="rt-file-input" />
+        <button class="primary" onclick="rtUploadFile()">Upload</button>
+        <div id="rt-file-list" style="margin-top:10px;"></div>
+
         <label style="margin-top:10px;">Live feed</label>
         <div id="rt-feed"></div>
     </div>
