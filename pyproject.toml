@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "arithmetic-super-app"
+version = "0.1.0"
+description = "A modular arithmetic engine supporting basic, scientific, and matrix operations."
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+authors = [
+    {name = "nothacker-afk"}
+]
+keywords = ["arithmetic", "math", "calculator", "matrix", "scientific"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0"]
+
+[project.urls]
+Homepage = "https://github.com/nothacker-afk/arithmetic-solution-"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["arithmetic*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
