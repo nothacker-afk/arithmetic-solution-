@@ -1,4 +1,4 @@
-"""Tests for PWA routes (manifest, service worker, static files)."""
+"""Tests for PWA routes (updated for Phase 22 modular frontend)."""
 
 
 def test_manifest_served(client):
@@ -17,7 +17,8 @@ def test_service_worker_served(client):
     assert "javascript" in r.content_type
     assert r.headers.get("Service-Worker-Allowed") == "/"
     body = r.get_data(as_text=True)
-    assert "arith-pwa-v1" in body
+    # Phase 28 bumped cache to v2
+    assert "arith-pwa-v2" in body
 
 
 def test_offline_page_served(client):
@@ -38,4 +39,18 @@ def test_index_html_has_manifest_link(client):
     assert r.status_code == 200
     body = r.get_data(as_text=True)
     assert 'rel="manifest"' in body
+
+
+def test_index_html_loads_pwa_module(client):
+    """Phase 22 moved SW registration into js/pwa.js."""
+    r = client.get("/")
+    body = r.get_data(as_text=True)
+    assert "/static/js/pwa.js" in body
+
+
+def test_pwa_module_registers_service_worker(client):
+    r = client.get("/static/js/pwa.js")
+    assert r.status_code == 200
+    body = r.get_data(as_text=True)
+    assert "serviceWorker" in body
     assert "/sw.js" in body

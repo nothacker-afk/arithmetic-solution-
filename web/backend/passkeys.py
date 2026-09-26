@@ -185,10 +185,8 @@ def register_finish():
 @passkeys_bp.route("/login/begin", methods=["POST"])
 @rate_limit(max_calls=20, window_seconds=60)
 def login_begin():
-    w = _webauthn()
-    if not w:
-        return jsonify({"error": "Passkeys not installed"}), 503
-
+    # Validate input BEFORE checking SDK availability so callers get
+    # meaningful 400s even when passkeys aren't installed on this server.
     data = request.get_json(silent=True) or {}
     username = (data.get("username") or "").strip()
     if not username:
@@ -205,6 +203,10 @@ def login_begin():
 
     if not creds:
         return jsonify({"error": "No passkeys registered for this user"}), 404
+
+    w = _webauthn()
+    if not w:
+        return jsonify({"error": "Passkeys not installed on this server"}), 503
 
     from webauthn.helpers import generate_challenge
     from webauthn.helpers.structs import PublicKeyCredentialDescriptor

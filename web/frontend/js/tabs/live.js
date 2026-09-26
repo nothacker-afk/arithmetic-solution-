@@ -10,6 +10,7 @@ const Live = (() => {
 
     function addChat(msg) {
         const log = document.getElementById("rt-chat-log");
+        if (!log) return;
         const line = document.createElement("div");
         line.className = "chat-line" + (msg.username === "system" ? " system" : "");
         const who = msg.username === "system" ? "" : `<strong>${msg.username}</strong>: `;
@@ -18,6 +19,21 @@ const Live = (() => {
         log.appendChild(line);
         log.scrollTop = log.scrollHeight;
         while (log.children.length > 100) log.removeChild(log.firstChild);
+    }
+
+    function setUsers(users) {
+        users = users || [];
+        // Presence avatars
+        if (window.Presence && Presence.renderStrip) {
+            Presence.renderStrip("rt-avatars", users);
+        } else {
+            // Fallback to plain text
+            const el = document.getElementById("rt-avatars");
+            if (el) el.textContent = users.length ? "In room: " + users.join(", ") : "";
+        }
+        // Legacy rt-users element (kept blank if present)
+        const legacy = document.getElementById("rt-users");
+        if (legacy) legacy.textContent = "";
     }
 
     function ensureSocket() {
@@ -32,14 +48,23 @@ const Live = (() => {
             loadHistory();
             refreshFiles();
         });
-        socket.on("user_joined", (d) => { addChat({ username: "system", body: d.username + " joined" }); setUsers(d.users); });
-        socket.on("user_left", (d) => { addChat({ username: "system", body: d.username + " left" }); setUsers(d.users); });
+        socket.on("user_joined", (d) => {
+            addChat({ username: "system", body: (d.username || "user") + " joined" });
+            setUsers(d.users);
+        });
+        socket.on("user_left", (d) => {
+            addChat({ username: "system", body: (d.username || "user") + " left" });
+            setUsers(d.users);
+        });
         socket.on("chat_message", async (d) => {
             if (d.encrypted) {
                 const key = await ensureKey();
                 if (!key) return addChat({ username: d.username, body: "[encrypted]", encrypted: true });
-                try { addChat({ username: d.username, body: await decrypt(key, d.body), encrypted: true }); }
-                catch { addChat({ username: d.username, body: "[decrypt failed]", encrypted: true }); }
+                try {
+                    addChat({ username: d.username, body: await decrypt(key, d.body), encrypted: true });
+                } catch {
+                    addChat({ username: d.username, body: "[decrypt failed]", encrypted: true });
+                }
             } else addChat(d);
         });
         socket.on("typing", (d) => {
@@ -48,6 +73,7 @@ const Live = (() => {
         });
         socket.on("calc_received", (d) => {
             const feed = document.getElementById("rt-feed");
+            if (!feed) return;
             const item = document.createElement("div");
             item.className = "feed-item";
             item.innerHTML = `<strong>${d.username}</strong>: ${d.expression} = ${d.result}`;
@@ -57,20 +83,11 @@ const Live = (() => {
         return socket;
     }
 
-    function setUsers(users) {
-        users = users || [];
-        if (window.Presence) {
-            Presence.renderStrip("rt-avatars", users);
-        }
-        const el = document.getElementById("rt-users");
-        if (el) el.textContent = "";
-    }
-
     async function ensureKey() {
         const e2e = document.getElementById("rt-e2e")?.checked;
         if (!e2e) return null;
         if (cryptoKey) return cryptoKey;
-        const pass = document.getElementById("rt-passphrase").value;
+        const pass = document.getElementById("rt-passphrase")?.value;
         if (!pass || !currentRoom) return null;
         cryptoKey = await deriveKey(pass, currentRoom);
         return cryptoKey;
@@ -95,7 +112,7 @@ const Live = (() => {
         const text = input.value.trim();
         if (!text || !currentRoom) return;
         const user = document.getElementById("rt-user").value.trim() || "guest";
-        const e2e = document.getElementById("rt-e2e").checked;
+        const e2e = document.getElementById("rt-e2e")?.checked;
         let body = text, encrypted = false;
         if (e2e) {
             const key = await ensureKey();
@@ -114,6 +131,7 @@ const Live = (() => {
     async function loadHistory() {
         if (!currentRoom) return;
         const log = document.getElementById("rt-chat-log");
+        if (!log) return;
         log.innerHTML = "";
         try {
             const data = await API.get(`/api/chat/${currentRoom}?limit=50`);
@@ -156,13 +174,12 @@ const Live = (() => {
             if (e.key === "Enter") { e.preventDefault(); sendChat(); }
         });
         document.getElementById("rt-e2e")?.addEventListener("change", (e) => {
-            document.getElementById("rt-passphrase").style.display = e.target.checked ? "block" : "none";
+            const p = document.getElementById("rt-passphrase");
+            if (p) p.style.display = e.target.checked ? "block" : "none";
         });
     }
 
-    function onShow() {
-        if (currentRoom) refreshFiles();
-    }
+    function onShow() { if (currentRoom) refreshFiles(); }
 
     return { init, onShow };
 })();

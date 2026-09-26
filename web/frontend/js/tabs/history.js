@@ -15,6 +15,7 @@ const History = (() => {
             btn.addEventListener("click", () => remove(btn.dataset.id));
         });
     }
+
     async function load() {
         const list = document.getElementById("history-list");
         if (!API.isLoggedIn()) {
@@ -28,18 +29,25 @@ const History = (() => {
             const items = await API.get("/api/history?limit=50");
             render(items);
         } catch (e) {
-            // Fallback to offline cache
-            if (window.Offline && !navigator.onLine) {
-                const cached = await Offline.listCalcs(50);
-                if (cached.length) {
-                    render(cached.map(c => ({ id: c.id, expression: c.expression, result: c.result })));
-                    UI.toast("Showing cached history (offline)", "warning");
-                    return;
-                }
+            // Offline fallback: use cached calculations from IndexedDB
+            if (window.Offline && Offline.listCalcs) {
+                try {
+                    const cached = await Offline.listCalcs(50);
+                    if (cached.length) {
+                        render(cached.map(c => ({
+                            id: c.id,
+                            expression: c.expression,
+                            result: c.result,
+                        })));
+                        UI.toast && UI.toast("Showing cached history (offline)", "warning");
+                        return;
+                    }
+                } catch (cacheErr) { /* ignore */ }
             }
             list.innerHTML = `<div class="empty">Error: ${e.message}</div>`;
         }
     }
+
     async function remove(id) {
         try {
             await API.del("/api/history/" + id);
@@ -49,8 +57,10 @@ const History = (() => {
             UI.toast("Delete failed: " + e.message, "error");
         }
     }
+
     function init() {
         document.getElementById("history-refresh")?.addEventListener("click", load);
     }
+
     return { init, load, remove };
 })();
