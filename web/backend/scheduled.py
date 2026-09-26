@@ -39,7 +39,7 @@ def _parse_iso(s: str):
         return None
 
 
-@_scheduled_bp.route("", methods=["POST"])
+@scheduled_bp.route("", methods=["POST"])
 @require_auth
 @rate_limit(max_calls=30, window_seconds=60)
 def schedule():
