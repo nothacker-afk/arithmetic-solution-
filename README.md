@@ -446,3 +446,54 @@ Responses split into `upcoming` and `past`.
 
 States: `available`, `away`, `busy`, `dnd`, `invisible`. Emoji + message
 shown next to the header badge.
+
+## Group DMs (Phase 56)
+
+    GET    /api/groups
+    POST   /api/groups                            {name, usernames[]}
+    GET    /api/groups/<id>
+    POST   /api/groups/<id>/members               {username}
+    DELETE /api/groups/<id>/members/<user_id>
+    GET    /api/groups/<id>/messages
+    POST   /api/groups/<id>/messages              {body, encrypted?, kind?}
+
+Up to 50 members per group. Members can leave; only the owner can
+remove others.
+
+## Public Room Pages (Phase 57)
+
+    GET /rooms/<room>
+
+Unauthenticated HTML preview of a published room. Includes name,
+description, member count, tags, and last 5 (non-encrypted) messages.
+OpenGraph meta tags for link previews.
+
+## Keyboard Shortcuts (Phase 58)
+
+Press `?` (or click the `?` button in the header) to see all
+shortcuts. Every shortcut can be disabled individually; the config
+is stored in `localStorage`.
+
+Default bindings: `1`-`9` switch tabs · `t` theme · `l` language ·
+`/` focus search · `?` help · `Ctrl+K` command palette.
+
+## Room Templates (Phase 59)
+
+    GET    /api/room_templates
+    GET    /api/room_templates/<id>
+    POST   /api/rooms/<room>/apply_template       {template_id}
+    GET    /api/rooms/<room>/applied_template
+
+Built-in templates: `blank`, `community`, `project`, `study`.
+Applying creates wiki pages (idempotent — skips existing slugs) and
+sets description + tags. Only the room owner can apply.
+
+## Admin Analytics (Phase 60)
+
+    GET /api/admin/analytics?days=30
+    GET /api/admin/analytics/users?days=30
+    GET /api/admin/analytics/rooms?limit=10
+
+Daily time-series for users, chat messages, calculations, DMs, and
+audit events. The admin dashboard renders inline bar charts — no
+external charting library required.
