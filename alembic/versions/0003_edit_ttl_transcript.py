@@ -1,4 +1,4 @@
-"""Add edit history, TTLs, transcripts (now part of 0001_initial).
+"""No-op placeholder (schema consolidated into 0001).
 
 Revision ID: 0003_edit_ttl_transcript
 Revises: 0002_device_tokens

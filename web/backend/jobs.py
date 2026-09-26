@@ -1,7 +1,8 @@
-"""Background retention jobs (Phase 24 + Phase 39).
+"""Background retention jobs (Phases 24 + 39).
 
-Purges old rows based on configurable TTLs, plus expired disappearing
-messages. Runs in a background thread when RETENTION_ENABLED=1.
+First thing every run: purge expired disappearing messages.
+Then apply TTLs for calculations / chat / audit / device tokens.
+Runs in a background thread when RETENTION_ENABLED=1.
 """
 import os
 import threading
@@ -32,33 +33,39 @@ def _ttl(name: str, default_days: int) -> int:
 
 
 def run_retention() -> dict:
-    """Run every retention job. Returns dict of deletion counts."""
+    """Run every retention job. Returns a dict of deletion counts."""
     now = datetime.now(timezone.utc)
     deleted = {}
 
-    # 1. Expired disappearing chat messages (Phase 39)
+    # ---- 1. Expired disappearing messages (Phase 39) ----
     now_iso = now.isoformat(timespec="seconds")
     try:
         with get_db() as conn:
             cur = conn.execute(
                 "DELETE FROM chat_messages "
-                "WHERE expires_at IS NOT NULL AND expires_at < ?",
+                "WHERE expires_at IS NOT NULL AND expires_at != '' "
+                "  AND expires_at < ?",
                 (now_iso,),
             )
             if cur.rowcount:
                 deleted["expired_chat"] = cur.rowcount
+    except Exception as e:
+        log.warning("expired chat purge failed: %s", e)
 
+    try:
+        with get_db() as conn:
             cur = conn.execute(
                 "DELETE FROM dm_messages "
-                "WHERE expires_at IS NOT NULL AND expires_at < ?",
+                "WHERE expires_at IS NOT NULL AND expires_at != '' "
+                "  AND expires_at < ?",
                 (now_iso,),
             )
             if cur.rowcount:
                 deleted["expired_dm"] = cur.rowcount
     except Exception as e:
-        log.warning("expired-message purge failed: %s", e)
+        log.warning("expired dm purge failed: %s", e)
 
-    # 2. Old calculations
+    # ---- 2. Old calculations ----
     days = _ttl("RETENTION_CALC_DAYS", 0)
     if days > 0:
         cutoff = (now - timedelta(days=days)).isoformat()
@@ -67,7 +74,7 @@ def run_retention() -> dict:
             if cur.rowcount:
                 deleted["calculations"] = cur.rowcount
 
-    # 3. Old chat messages
+    # ---- 3. Old chat messages ----
     days = _ttl("RETENTION_CHAT_DAYS", 0)
     if days > 0:
         cutoff = (now - timedelta(days=days)).isoformat()
@@ -76,7 +83,7 @@ def run_retention() -> dict:
             if cur.rowcount:
                 deleted["chat_messages"] = cur.rowcount
 
-    # 4. Old audit entries
+    # ---- 4. Old audit entries ----
     days = _ttl("RETENTION_AUDIT_DAYS", 0)
     if days > 0:
         cutoff = (now - timedelta(days=days)).isoformat()
@@ -85,14 +92,19 @@ def run_retention() -> dict:
             if cur.rowcount:
                 deleted["audit_log"] = cur.rowcount
 
-    # 5. Expired room invites
-    with get_db() as conn:
-        cur = conn.execute("DELETE FROM room_invites WHERE expires_at < ?",
-                           (now.isoformat(),))
-        if cur.rowcount:
-            deleted["room_invites"] = cur.rowcount
+    # ---- 5. Expired room invites ----
+    try:
+        with get_db() as conn:
+            cur = conn.execute(
+                "DELETE FROM room_invites WHERE expires_at < ?",
+                (now_iso,),
+            )
+            if cur.rowcount:
+                deleted["room_invites"] = cur.rowcount
+    except Exception as e:
+        log.warning("invite purge failed: %s", e)
 
-    # 6. Old device tokens
+    # ---- 6. Old device tokens ----
     days = _ttl("RETENTION_DEVICE_DAYS", 270)
     if days > 0:
         cutoff = (now - timedelta(days=days)).isoformat()

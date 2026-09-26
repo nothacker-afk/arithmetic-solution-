@@ -1,4 +1,4 @@
-"""Add device_tokens (now part of 0001_initial).
+"""No-op placeholder (schema consolidated into 0001).
 
 Revision ID: 0002_device_tokens
 Revises: 0001_initial

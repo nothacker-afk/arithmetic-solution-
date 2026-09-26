@@ -2,7 +2,6 @@
 
 
 def _reg(client, u):
-    """Register a user, return the token string."""
     r = client.post("/api/auth/register", json={
         "username": u, "email": f"{u}@example.com", "password": "secret123",
     })
@@ -39,6 +38,7 @@ def test_delete_chat_message(client):
     _reg(client, "del_user1")
     msg = client.post("/api/chat/del-room", json={
         "username": "del_user1", "body": "to be deleted"}).get_json()
+    assert msg and msg.get("id"), f"POST failed: {msg}"
 
     r = client.delete(f"/api/chat/del-room/{msg['id']}?username=del_user1")
     assert r.status_code == 200
@@ -55,15 +55,18 @@ def test_edit_history(client):
     msg = client.post("/api/chat/hist-room", json={
         "username": "hist_user1", "body": "v1"}).get_json()
 
-    client.patch(f"/api/chat/hist-room/{msg['id']}",
-                 json={"body": "v2", "username": "hist_user1"})
-    client.patch(f"/api/chat/hist-room/{msg['id']}",
-                 json={"body": "v3", "username": "hist_user1"})
+    r1 = client.patch(f"/api/chat/hist-room/{msg['id']}",
+                      json={"body": "v2", "username": "hist_user1"})
+    assert r1.status_code == 200, r1.get_json()
+
+    r2 = client.patch(f"/api/chat/hist-room/{msg['id']}",
+                      json={"body": "v3", "username": "hist_user1"})
+    assert r2.status_code == 200, r2.get_json()
 
     r = client.get(f"/api/chat/hist-room/{msg['id']}/edits")
     assert r.status_code == 200
     edits = r.get_json()["edits"]
-    assert len(edits) == 2
+    assert len(edits) == 2, f"expected 2 edits, got {len(edits)}: {edits}"
     assert edits[-1]["old_body"] == "v1"
     assert edits[0]["old_body"] == "v2"
 

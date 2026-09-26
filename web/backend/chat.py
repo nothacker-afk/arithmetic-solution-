@@ -226,14 +226,11 @@ def edit_message(room, msg_id):
         if row["username"] != username:
             return jsonify({"error": "Only the original author can edit"}), 403
 
-        try:
-            conn.execute(
-                "INSERT INTO message_edits (message_kind, message_id, old_body, edited_by) "
-                "VALUES ('chat', ?, ?, ?)",
-                (msg_id, row["body"], 0),
-            )
-        except Exception:
-            pass
+        conn.execute(
+            "INSERT INTO message_edits (message_kind, message_id, old_body, edited_by) "
+            "VALUES ('chat', ?, ?, ?)",
+            (msg_id, row["body"], None),
+        )
 
         conn.execute(
             "UPDATE chat_messages SET body = ?, edited_at = CURRENT_TIMESTAMP "

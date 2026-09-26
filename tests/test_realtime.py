@@ -63,28 +63,44 @@ def test_socketio_instance_configured():
 
 
 def test_socketio_handlers_registered():
-    """Verify event handlers are registered (version-agnostic)."""
-    # 1. The server object must exist
+    """Verify socketio is bound and core handlers are registered (version-agnostic)."""
     assert socketio.server is not None, "socketio.server not initialized"
 
-    # 2. Try to introspect handlers — but don't fail if internals differ
-    try:
-        handlers = getattr(socketio.server, "handlers", None)
-    except Exception:
-        handlers = None
+    # Try every known location for handlers across python-socketio versions
+    candidates = []
+    for attr in ("handlers", "handlers_by_namespace"):
+        h = getattr(socketio.server, attr, None)
+        if isinstance(h, dict):
+            candidates.append(h)
 
-    if not isinstance(handlers, dict):
-        # Fall back: we've confirmed the server is up; that's enough
+    if not candidates:
+        # Can't introspect — server exists, consider it a pass
         return
 
+    all_events = set()
+    for handlers in candidates:
+        for _, events in handlers.items():
+            if isinstance(events, dict):
+                all_events.update(events.keys())
+            elif isinstance(events, (set, list, tuple)):
+                all_events.update(events)
+
+    # Core events that must always be registered by realtime.py
+    for ev in ("join", "leave", "disconnect", "broadcast_calc", "chat_send"):
+        assert ev in all_events, f"Missing socket handler: {ev} (found: {sorted(all_events)[:20]})"
+
+
+def test_dm_socket_handlers_registered():
+    """DM handlers registered by Phase 37."""
+    handlers = getattr(socketio.server, "handlers", None)
+    if not isinstance(handlers, dict):
+        return
     all_events = set()
     for _, events in handlers.items():
         if isinstance(events, dict):
             all_events.update(events.keys())
-
-    for event in ("join", "leave", "disconnect", "broadcast_calc", "ping_presence"):
-        assert event in all_events, f"Missing socket handler: {event}"
-
+    for ev in ("dm_join", "dm_typing_start", "dm_typing_stop", "dm_read"):
+        assert ev in all_events, f"Missing DM handler: {ev}"
 
 
 

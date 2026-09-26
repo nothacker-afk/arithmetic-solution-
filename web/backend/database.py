@@ -230,9 +230,8 @@ CREATE TABLE IF NOT EXISTS message_edits (
     message_kind TEXT NOT NULL,
     message_id INTEGER NOT NULL,
     old_body TEXT NOT NULL,
-    edited_by INTEGER NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (edited_by) REFERENCES users(id) ON DELETE CASCADE
+    edited_by INTEGER,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_edits_msg ON message_edits(message_kind, message_id);
 

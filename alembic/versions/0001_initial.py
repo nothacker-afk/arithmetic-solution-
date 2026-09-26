@@ -1,4 +1,4 @@
-"""Initial schema — full current schema (consolidated).
+"""Initial schema — consolidated full schema.
 
 Revision ID: 0001_initial
 Revises:
@@ -14,7 +14,6 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # users
     op.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -24,7 +23,6 @@ def upgrade() -> None:
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
-    # calculations
     op.execute("""
         CREATE TABLE IF NOT EXISTS calculations (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -37,7 +35,6 @@ def upgrade() -> None:
     """)
     op.execute("CREATE INDEX IF NOT EXISTS idx_calc_user ON calculations(user_id)")
 
-    # chat_messages (full schema)
     op.execute("""
         CREATE TABLE IF NOT EXISTS chat_messages (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -57,7 +54,6 @@ def upgrade() -> None:
     op.execute("CREATE INDEX IF NOT EXISTS idx_chat_room ON chat_messages(room_id, id)")
     op.execute("CREATE INDEX IF NOT EXISTS idx_chat_parent ON chat_messages(parent_id)")
 
-    # room_files
     op.execute("""
         CREATE TABLE IF NOT EXISTS room_files (
             id TEXT PRIMARY KEY,
@@ -71,7 +67,6 @@ def upgrade() -> None:
     """)
     op.execute("CREATE INDEX IF NOT EXISTS idx_files_room ON room_files(room_id, created_at DESC)")
 
-    # rooms + members + invites
     op.execute("""
         CREATE TABLE IF NOT EXISTS rooms (
             name TEXT PRIMARY KEY,
@@ -102,7 +97,6 @@ def upgrade() -> None:
     """)
     op.execute("CREATE INDEX IF NOT EXISTS idx_invites_room ON room_invites(room_name)")
 
-    # user_preferences
     op.execute("""
         CREATE TABLE IF NOT EXISTS user_preferences (
             user_id INTEGER PRIMARY KEY,
@@ -112,7 +106,6 @@ def upgrade() -> None:
         )
     """)
 
-    # audit_log
     op.execute("""
         CREATE TABLE IF NOT EXISTS audit_log (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -130,7 +123,6 @@ def upgrade() -> None:
     op.execute("CREATE INDEX IF NOT EXISTS idx_audit_actor ON audit_log(actor_id, created_at DESC)")
     op.execute("CREATE INDEX IF NOT EXISTS idx_audit_action ON audit_log(action, created_at DESC)")
 
-    # account_backups
     op.execute("""
         CREATE TABLE IF NOT EXISTS account_backups (
             id TEXT PRIMARY KEY,
@@ -142,7 +134,6 @@ def upgrade() -> None:
     """)
     op.execute("CREATE INDEX IF NOT EXISTS idx_backups_user ON account_backups(user_id, created_at DESC)")
 
-    # device_tokens
     op.execute("""
         CREATE TABLE IF NOT EXISTS device_tokens (
             token TEXT PRIMARY KEY,
@@ -153,7 +144,6 @@ def upgrade() -> None:
     """)
     op.execute("CREATE INDEX IF NOT EXISTS idx_device_user ON device_tokens(user_id)")
 
-    # passkeys
     op.execute("""
         CREATE TABLE IF NOT EXISTS passkeys (
             credential_id TEXT PRIMARY KEY,
@@ -176,7 +166,6 @@ def upgrade() -> None:
         )
     """)
 
-    # voice_clips
     op.execute("""
         CREATE TABLE IF NOT EXISTS voice_clips (
             id TEXT PRIMARY KEY,
@@ -191,7 +180,6 @@ def upgrade() -> None:
         )
     """)
 
-    # message_reactions
     op.execute("""
         CREATE TABLE IF NOT EXISTS message_reactions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -206,7 +194,6 @@ def upgrade() -> None:
     op.execute("CREATE INDEX IF NOT EXISTS idx_reactions_msg ON message_reactions(message_kind, message_id)")
     op.execute("CREATE INDEX IF NOT EXISTS idx_reactions_user ON message_reactions(user_id)")
 
-    # dm_threads + dm_messages
     op.execute("""
         CREATE TABLE IF NOT EXISTS dm_threads (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -219,6 +206,7 @@ def upgrade() -> None:
     """)
     op.execute("CREATE INDEX IF NOT EXISTS idx_dm_threads_a ON dm_threads(user_a, last_message_at DESC)")
     op.execute("CREATE INDEX IF NOT EXISTS idx_dm_threads_b ON dm_threads(user_b, last_message_at DESC)")
+
     op.execute("""
         CREATE TABLE IF NOT EXISTS dm_messages (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -237,20 +225,18 @@ def upgrade() -> None:
     """)
     op.execute("CREATE INDEX IF NOT EXISTS idx_dm_messages_thread ON dm_messages(thread_id, created_at)")
 
-    # message_edits
     op.execute("""
         CREATE TABLE IF NOT EXISTS message_edits (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             message_kind TEXT NOT NULL,
             message_id INTEGER NOT NULL,
             old_body TEXT NOT NULL,
-            edited_by INTEGER NOT NULL,
+            edited_by INTEGER,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
     op.execute("CREATE INDEX IF NOT EXISTS idx_edits_msg ON message_edits(message_kind, message_id)")
 
-    # room_ttls + thread_ttls
     op.execute("""
         CREATE TABLE IF NOT EXISTS room_ttls (
             room_id TEXT PRIMARY KEY,
