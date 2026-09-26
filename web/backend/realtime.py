@@ -240,6 +240,61 @@ def on_webrtc_ice(data):
     }, to=target)
 
 
+
+
+# ---------------------------------------------------------------------
+# DM typing + read receipts (Phase 37)
+# ---------------------------------------------------------------------
+@socketio.on("dm_typing_start")
+def on_dm_typing_start(data):
+    thread_id = (data or {}).get("thread_id")
+    recipient_id = (data or {}).get("recipient_id")
+    username = (data or {}).get("username", "guest")
+    if not thread_id or not recipient_id:
+        return
+    emit("dm_typing", {
+        "thread_id": thread_id,
+        "username": username,
+        "state": "start",
+    }, to=f"user_{recipient_id}")
+
+
+@socketio.on("dm_typing_stop")
+def on_dm_typing_stop(data):
+    thread_id = (data or {}).get("thread_id")
+    recipient_id = (data or {}).get("recipient_id")
+    username = (data or {}).get("username", "guest")
+    if not thread_id or not recipient_id:
+        return
+    emit("dm_typing", {
+        "thread_id": thread_id,
+        "username": username,
+        "state": "stop",
+    }, to=f"user_{recipient_id}")
+
+
+@socketio.on("dm_join")
+def on_dm_join(data):
+    user_id = (data or {}).get("user_id")
+    if not user_id:
+        return
+    join_room(f"user_{user_id}")
+    emit("dm_subscribed", {"user_id": user_id}, to=request.sid)
+
+
+@socketio.on("dm_read")
+def on_dm_read(data):
+    thread_id = (data or {}).get("thread_id")
+    sender_id = (data or {}).get("sender_id")
+    reader_username = (data or {}).get("reader_username", "guest")
+    if not thread_id or not sender_id:
+        return
+    emit("dm_read", {
+        "thread_id": thread_id,
+        "reader_username": reader_username,
+    }, to=f"user_{sender_id}")
+
+
 def reset_state():
     """Clear all room state (used in tests)."""
     ROOMS.clear()

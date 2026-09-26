@@ -262,33 +262,42 @@ def _ensure_extra_tables(conn) -> None:
 
 
 def _ensure_columns(conn) -> None:
-    """Add columns that were introduced after the initial schema.
-
-    Idempotent: checks PRAGMA table_info before ALTER TABLE.
-    """
-    # chat_messages: parent_id (threads), kind, attachment_id
+    """Add every column introduced after the initial schema. Idempotent."""
+    # -- chat_messages --
     cols = {r[1] for r in conn.execute("PRAGMA table_info(chat_messages)").fetchall()}
-    if "parent_id" not in cols:
-        conn.execute("ALTER TABLE chat_messages ADD COLUMN parent_id INTEGER")
-    if "kind" not in cols:
-        conn.execute("ALTER TABLE chat_messages ADD COLUMN kind TEXT NOT NULL DEFAULT 'text'")
-    if "attachment_id" not in cols:
-        conn.execute("ALTER TABLE chat_messages ADD COLUMN attachment_id TEXT")
-    if "edited_at" not in cols:
-        conn.execute("ALTER TABLE chat_messages ADD COLUMN edited_at TIMESTAMP")
-    if "deleted" not in cols:
-        conn.execute("ALTER TABLE chat_messages ADD COLUMN deleted INTEGER NOT NULL DEFAULT 0")
-    if "expires_at" not in cols:
-        conn.execute("ALTER TABLE chat_messages ADD COLUMN expires_at TIMESTAMP")
+    for name, ddl in (
+        ("parent_id", "INTEGER"),
+        ("kind", "TEXT NOT NULL DEFAULT 'text'"),
+        ("attachment_id", "TEXT"),
+        ("edited_at", "TIMESTAMP"),
+        ("deleted", "INTEGER NOT NULL DEFAULT 0"),
+        ("expires_at", "TIMESTAMP"),
+    ):
+        if name not in cols:
+            conn.execute(f"ALTER TABLE chat_messages ADD COLUMN {name} {ddl}")
 
-    # dm_messages: kind, attachment_id
+    # -- dm_messages --
     cols = {r[1] for r in conn.execute("PRAGMA table_info(dm_messages)").fetchall()}
-    if "kind" not in cols:
-        conn.execute("ALTER TABLE dm_messages ADD COLUMN kind TEXT NOT NULL DEFAULT 'text'")
-    if "attachment_id" not in cols:
-        conn.execute("ALTER TABLE dm_messages ADD COLUMN attachment_id TEXT")
+    for name, ddl in (
+        ("kind", "TEXT NOT NULL DEFAULT 'text'"),
+        ("attachment_id", "TEXT"),
+        ("edited_at", "TIMESTAMP"),
+        ("deleted", "INTEGER NOT NULL DEFAULT 0"),
+        ("expires_at", "TIMESTAMP"),
+    ):
+        if name not in cols:
+            conn.execute(f"ALTER TABLE dm_messages ADD COLUMN {name} {ddl}")
+
+    # -- voice_clips --
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(voice_clips)").fetchall()}
+    if cols:
+        if "transcript" not in cols:
+            conn.execute("ALTER TABLE voice_clips ADD COLUMN transcript TEXT")
+        if "transcript_lang" not in cols:
+            conn.execute("ALTER TABLE voice_clips ADD COLUMN transcript_lang TEXT")
 
     conn.execute("CREATE INDEX IF NOT EXISTS idx_chat_parent ON chat_messages(parent_id)")
+
 
 
 def _sqlite_init_db():
@@ -302,6 +311,7 @@ def _sqlite_init_db():
             _ensure_columns(conn)
         except Exception:
             pass
+
 
 
 def _sqlite_reset_db():

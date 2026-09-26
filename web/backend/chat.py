@@ -1,13 +1,18 @@
 """Chat REST blueprint.
 
 Endpoints:
-    GET  /api/chat/<room>              - list recent messages
-    POST /api/chat/<room>              - post a message
-    DELETE /api/chat/<room>            - clear room history
-
-Messages may be plaintext or client-encrypted. When encrypted=1 the
-server treats `body` as opaque base64 ciphertext and never inspects it.
+    GET    /api/chat/<room>                    list messages (with reply_count)
+    POST   /api/chat/<room>                    post message (voice-aware)
+    DELETE /api/chat/<room>                    clear room
+    PATCH  /api/chat/<room>/<msg_id>           edit message
+    DELETE /api/chat/<room>/<msg_id>           soft-delete (tombstone)
+    GET    /api/chat/<room>/<msg_id>/edits     edit history
+    GET    /api/chat/<room>/<parent_id>/replies  list replies
+    GET    /api/chat/<room>/ttl                get disappearing TTL
+    PUT    /api/chat/<room>/ttl                set disappearing TTL
 """
+import re
+
 from flask import Blueprint, request, jsonify
 
 from .database import get_db
@@ -16,26 +21,44 @@ from .rate_limit import rate_limit
 chat_bp = Blueprint("chat", __name__, url_prefix="/api/chat")
 
 MAX_BODY_BYTES = 4096
-MAX_ROOM_LEN = 64
-MAX_USER_LEN = 32
+ROOM_RE = re.compile(r"^[a-zA-Z0-9_-]{1,64}$")
 
 
-def _validate_room(room: str) -> str:
+def _validate_room(room):
     room = (room or "").strip()
-    if not room or len(room) > MAX_ROOM_LEN:
+    if not ROOM_RE.match(room):
         raise ValueError("Invalid room name")
-    if not all(c.isalnum() or c in "-_" for c in room):
-        raise ValueError("Room name must be alphanumeric (hyphens and underscores allowed)")
     return room
 
 
-def _validate_user(u: str) -> str:
-    u = (u or "").strip()[:MAX_USER_LEN]
-    if not u:
-        raise ValueError("Username required")
-    return u
+def _room_ttl_seconds(conn, room):
+    row = conn.execute(
+        "SELECT ttl_seconds FROM room_ttls WHERE room_id = ?", (room,)
+    ).fetchone()
+    return int(row["ttl_seconds"]) if row else 0
 
 
+def _row_to_dict(row):
+    """Convert a sqlite3.Row to a dict with safe defaults for new columns."""
+    d = dict(row)
+    d.setdefault("parent_id", None)
+    d.setdefault("kind", "text")
+    d.setdefault("attachment_id", None)
+    d.setdefault("edited_at", None)
+    d.setdefault("deleted", 0)
+    d.setdefault("expires_at", None)
+    d.setdefault("reply_count", 0)
+    return d
+
+
+def _safe_select(sql_star, fallback_sql):
+    """Try the new SELECT; fall back if the DB is missing columns."""
+    return sql_star, fallback_sql
+
+
+# ---------------------------------------------------------------------
+# List messages
+# ---------------------------------------------------------------------
 @chat_bp.route("/<room>", methods=["GET"])
 def list_messages(room):
     try:
@@ -49,18 +72,34 @@ def list_messages(room):
         limit = 50
 
     with get_db() as conn:
-        rows = conn.execute(
-            "SELECT id, username, body, encrypted, created_at "
-            "FROM chat_messages WHERE room_id = ? "
-            "ORDER BY id DESC LIMIT ?",
-            (room, limit),
-        ).fetchall()
+        # Try the full SELECT first
+        try:
+            rows = conn.execute(
+                "SELECT c.id, c.username, c.body, c.encrypted, c.parent_id, "
+                "       c.kind, c.attachment_id, c.edited_at, c.deleted, "
+                "       c.expires_at, c.created_at, "
+                "       (SELECT COUNT(*) FROM chat_messages r WHERE r.parent_id = c.id) "
+                "         AS reply_count "
+                "FROM chat_messages c WHERE c.room_id = ? "
+                "ORDER BY c.id DESC LIMIT ?",
+                (room, limit),
+            ).fetchall()
+        except Exception:
+            # Fallback for old schemas
+            rows = conn.execute(
+                "SELECT id, username, body, encrypted, created_at "
+                "FROM chat_messages WHERE room_id = ? "
+                "ORDER BY id DESC LIMIT ?",
+                (room, limit),
+            ).fetchall()
 
-    # Reverse so oldest first
-    messages = [dict(r) for r in reversed(rows)]
-    return jsonify({"room": room, "messages": messages})
+    out = [_row_to_dict(r) for r in reversed(rows)]
+    return jsonify({"room": room, "messages": out})
 
 
+# ---------------------------------------------------------------------
+# Post a message (voice-aware + parent validation)
+# ---------------------------------------------------------------------
 @chat_bp.route("/<room>", methods=["POST"])
 @rate_limit(max_calls=60, window_seconds=60)
 def post_message(room):
@@ -75,23 +114,21 @@ def post_message(room):
     kind = (data.get("kind") or "text").strip()[:16]
     attachment_id = data.get("attachment_id")
     parent_id = data.get("parent_id")
+    encrypted = 1 if data.get("encrypted") else 0
 
     if not username:
         return jsonify({"error": "username is required"}), 400
-
-    # Empty body allowed ONLY for non-text messages (voice/file)
-    if kind == "text":
-        if not isinstance(body, str) or not body.strip():
-            return jsonify({"error": "body is required"}), 400
 
     if not isinstance(body, str):
         return jsonify({"error": "body must be a string"}), 400
     if len(body.encode("utf-8")) > MAX_BODY_BYTES:
         return jsonify({"error": "Message too long"}), 400
 
-    encrypted = 1 if data.get("encrypted") else 0
+    # Empty body is allowed ONLY for non-text kinds (voice, file)
+    if kind == "text" and not body.strip():
+        return jsonify({"error": "body is required"}), 400
 
-    # Validate parent before INSERT
+    # Validate parent BEFORE insert
     if parent_id is not None:
         if not isinstance(parent_id, int):
             return jsonify({"error": "parent_id must be an integer"}), 400
@@ -104,65 +141,65 @@ def post_message(room):
             return jsonify({"error": "parent message not found in this room"}), 404
 
     with get_db() as conn:
-        cur = conn.execute(
-            "INSERT INTO chat_messages "
-            "(room_id, username, body, encrypted, parent_id, kind, attachment_id) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (room, username, body, encrypted, parent_id, kind, attachment_id),
-        )
-        msg_id = cur.lastrowid
-        row = conn.execute(
-            "SELECT id, username, body, encrypted, parent_id, kind, "
-            "       attachment_id, edited_at, deleted, expires_at, created_at "
-            "FROM chat_messages WHERE id = ?",
-            (msg_id,),
-        ).fetchone()
+        ttl = _room_ttl_seconds(conn, room)
 
-    out = dict(row)
+        try:
+            cur = conn.execute(
+                "INSERT INTO chat_messages "
+                "(room_id, username, body, encrypted, parent_id, kind, "
+                " attachment_id, expires_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, "
+                "  CASE WHEN ? > 0 THEN datetime('now', '+' || ? || ' seconds') "
+                "       ELSE NULL END)",
+                (room, username, body, encrypted, parent_id, kind,
+                 attachment_id, ttl, ttl),
+            )
+        except Exception:
+            # Fallback for old schema (no extra columns)
+            cur = conn.execute(
+                "INSERT INTO chat_messages "
+                "(room_id, username, body, encrypted) VALUES (?, ?, ?, ?)",
+                (room, username, body, encrypted),
+            )
+        msg_id = cur.lastrowid
+
+        try:
+            row = conn.execute(
+                "SELECT id, username, body, encrypted, parent_id, kind, "
+                "       attachment_id, edited_at, deleted, expires_at, created_at "
+                "FROM chat_messages WHERE id = ?", (msg_id,),
+            ).fetchone()
+        except Exception:
+            row = conn.execute(
+                "SELECT id, username, body, encrypted, created_at "
+                "FROM chat_messages WHERE id = ?", (msg_id,),
+            ).fetchone()
+
+    out = _row_to_dict(row)
     out["reply_count"] = 0
     return jsonify(out), 201
 
 
+# ---------------------------------------------------------------------
+# Clear room
+# ---------------------------------------------------------------------
 @chat_bp.route("/<room>", methods=["DELETE"])
 def clear_messages(room):
     try:
         room = _validate_room(room)
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
-
     with get_db() as conn:
         cur = conn.execute("DELETE FROM chat_messages WHERE room_id = ?", (room,))
         n = cur.rowcount
     return jsonify({"deleted_count": n})
 
 
-@chat_bp.route("/<room>/<int:parent_id>/replies", methods=["GET"])
-def list_replies(room, parent_id):
-    """List direct replies to a message (single level, no nesting)."""
-    try:
-        room = _validate_room(room)
-    except ValueError as e:
-        return jsonify({"error": str(e)}), 400
-
-    with get_db() as conn:
-        parent = conn.execute(
-            "SELECT id FROM chat_messages WHERE id = ? AND room_id = ?",
-            (parent_id, room),
-        ).fetchone()
-        if not parent:
-            return jsonify({"error": "Parent not found"}), 404
-        rows = conn.execute(
-            "SELECT id, username, body, encrypted, parent_id, kind, "
-            "       attachment_id, created_at "
-            "FROM chat_messages WHERE parent_id = ? ORDER BY id ASC LIMIT 200",
-            (parent_id,),
-        ).fetchall()
-    return jsonify({"parent_id": parent_id, "replies": [dict(r) for r in rows]})
-
-
+# ---------------------------------------------------------------------
+# Edit message
+# ---------------------------------------------------------------------
 @chat_bp.route("/<room>/<int:msg_id>", methods=["PATCH"])
 def edit_message(room, msg_id):
-    """Edit a chat message. Only the original sender can edit (auth or guest match)."""
     try:
         room = _validate_room(room)
     except ValueError as e:
@@ -181,7 +218,7 @@ def edit_message(room, msg_id):
 
     with get_db() as conn:
         row = conn.execute(
-            "SELECT username, body, encrypted FROM chat_messages WHERE id = ? AND room_id = ?",
+            "SELECT username, body FROM chat_messages WHERE id = ? AND room_id = ?",
             (msg_id, room),
         ).fetchone()
         if not row:
@@ -189,29 +226,36 @@ def edit_message(room, msg_id):
         if row["username"] != username:
             return jsonify({"error": "Only the original author can edit"}), 403
 
-        # Record edit history
+        try:
+            conn.execute(
+                "INSERT INTO message_edits (message_kind, message_id, old_body, edited_by) "
+                "VALUES ('chat', ?, ?, ?)",
+                (msg_id, row["body"], 0),
+            )
+        except Exception:
+            pass
+
         conn.execute(
-            "INSERT INTO message_edits (message_kind, message_id, old_body, edited_by) "
-            "VALUES ('chat', ?, ?, ?)",
-            (msg_id, row["body"], 0),
-        )
-        conn.execute(
-            "UPDATE chat_messages SET body = ?, edited_at = CURRENT_TIMESTAMP WHERE id = ?",
+            "UPDATE chat_messages SET body = ?, edited_at = CURRENT_TIMESTAMP "
+            "WHERE id = ?",
             (new_body, msg_id),
         )
         updated = conn.execute(
             "SELECT id, username, body, encrypted, parent_id, kind, attachment_id, "
             "       edited_at, deleted, expires_at, created_at "
-            "FROM chat_messages WHERE id = ?",
-            (msg_id,),
+            "FROM chat_messages WHERE id = ?", (msg_id,),
         ).fetchone()
 
-    return jsonify(dict(updated))
+    out = _row_to_dict(updated)
+    out["reply_count"] = 0
+    return jsonify(out)
 
 
+# ---------------------------------------------------------------------
+# Delete message (tombstone)
+# ---------------------------------------------------------------------
 @chat_bp.route("/<room>/<int:msg_id>", methods=["DELETE"])
 def delete_message(room, msg_id):
-    """Soft-delete a chat message (tombstone). Author only."""
     try:
         room = _validate_room(room)
     except ValueError as e:
@@ -243,43 +287,68 @@ def delete_message(room, msg_id):
     return jsonify({"deleted": msg_id, "tombstone": True})
 
 
+# ---------------------------------------------------------------------
+# Edit history
+# ---------------------------------------------------------------------
 @chat_bp.route("/<room>/<int:msg_id>/edits", methods=["GET"])
 def get_edits(room, msg_id):
-    """Return the edit history for a message."""
     try:
         room = _validate_room(room)
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
-
     with get_db() as conn:
-        # Ensure the message belongs to this room
         ok = conn.execute(
             "SELECT 1 FROM chat_messages WHERE id = ? AND room_id = ?",
             (msg_id, room),
         ).fetchone()
         if not ok:
             return jsonify({"error": "Message not found"}), 404
-
-        rows = conn.execute(
-            "SELECT old_body, created_at FROM message_edits "
-            "WHERE message_kind = 'chat' AND message_id = ? "
-            "ORDER BY id DESC",
-            (msg_id,),
-        ).fetchall()
-
+        try:
+            rows = conn.execute(
+                "SELECT old_body, created_at FROM message_edits "
+                "WHERE message_kind = 'chat' AND message_id = ? ORDER BY id DESC",
+                (msg_id,),
+            ).fetchall()
+        except Exception:
+            rows = []
     return jsonify({"edits": [dict(r) for r in rows]})
 
 
 # ---------------------------------------------------------------------
-# Disappearing messages (Phase 39)
+# Thread replies
 # ---------------------------------------------------------------------
-def _room_ttl_seconds(conn, room):
-    row = conn.execute(
-        "SELECT ttl_seconds FROM room_ttls WHERE room_id = ?", (room,),
-    ).fetchone()
-    return int(row["ttl_seconds"]) if row else 0
+@chat_bp.route("/<room>/<int:parent_id>/replies", methods=["GET"])
+def list_replies(room, parent_id):
+    try:
+        room = _validate_room(room)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+
+    with get_db() as conn:
+        parent = conn.execute(
+            "SELECT id FROM chat_messages WHERE id = ? AND room_id = ?",
+            (parent_id, room),
+        ).fetchone()
+        if not parent:
+            return jsonify({"error": "Parent not found"}), 404
+        try:
+            rows = conn.execute(
+                "SELECT id, username, body, encrypted, parent_id, kind, "
+                "       attachment_id, edited_at, deleted, expires_at, created_at "
+                "FROM chat_messages WHERE parent_id = ? ORDER BY id ASC LIMIT 200",
+                (parent_id,),
+            ).fetchall()
+        except Exception:
+            rows = []
+    return jsonify({
+        "parent_id": parent_id,
+        "replies": [_row_to_dict(r) for r in rows],
+    })
 
 
+# ---------------------------------------------------------------------
+# Room TTL (disappearing messages)
+# ---------------------------------------------------------------------
 @chat_bp.route("/<room>/ttl", methods=["GET"])
 def get_room_ttl(room):
     try:
@@ -293,7 +362,6 @@ def get_room_ttl(room):
 
 @chat_bp.route("/<room>/ttl", methods=["PUT"])
 def set_room_ttl(room):
-    """Set the disappearing-message TTL for a room (0 = disabled)."""
     try:
         room = _validate_room(room)
     except ValueError as e:
