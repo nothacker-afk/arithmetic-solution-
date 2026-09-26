@@ -70,33 +70,57 @@ def post_message(room):
         return jsonify({"error": str(e)}), 400
 
     data = request.get_json(silent=True) or {}
-    try:
-        username = _validate_user(data.get("username", ""))
-    except ValueError as e:
-        return jsonify({"error": str(e)}), 400
-
+    username = (data.get("username") or "").strip()[:32]
     body = data.get("body") or ""
-    if not isinstance(body, str) or not body.strip():
-        return jsonify({"error": "Message body required"}), 400
+    kind = (data.get("kind") or "text").strip()[:16]
+    attachment_id = data.get("attachment_id")
+    parent_id = data.get("parent_id")
+
+    if not username:
+        return jsonify({"error": "username is required"}), 400
+
+    # Empty body allowed ONLY for non-text messages (voice/file)
+    if kind == "text":
+        if not isinstance(body, str) or not body.strip():
+            return jsonify({"error": "body is required"}), 400
+
+    if not isinstance(body, str):
+        return jsonify({"error": "body must be a string"}), 400
     if len(body.encode("utf-8")) > MAX_BODY_BYTES:
         return jsonify({"error": "Message too long"}), 400
 
     encrypted = 1 if data.get("encrypted") else 0
 
+    # Validate parent before INSERT
+    if parent_id is not None:
+        if not isinstance(parent_id, int):
+            return jsonify({"error": "parent_id must be an integer"}), 400
+        with get_db() as conn:
+            ok = conn.execute(
+                "SELECT 1 FROM chat_messages WHERE id = ? AND room_id = ?",
+                (parent_id, room),
+            ).fetchone()
+        if not ok:
+            return jsonify({"error": "parent message not found in this room"}), 404
+
     with get_db() as conn:
         cur = conn.execute(
-            "INSERT INTO chat_messages (room_id, username, body, encrypted) "
-            "VALUES (?, ?, ?, ?)",
-            (room, username, body, encrypted),
+            "INSERT INTO chat_messages "
+            "(room_id, username, body, encrypted, parent_id, kind, attachment_id) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (room, username, body, encrypted, parent_id, kind, attachment_id),
         )
         msg_id = cur.lastrowid
         row = conn.execute(
-            "SELECT id, username, body, encrypted, created_at "
+            "SELECT id, username, body, encrypted, parent_id, kind, "
+            "       attachment_id, edited_at, deleted, expires_at, created_at "
             "FROM chat_messages WHERE id = ?",
             (msg_id,),
         ).fetchone()
 
-    return jsonify(dict(row)), 201
+    out = dict(row)
+    out["reply_count"] = 0
+    return jsonify(out), 201
 
 
 @chat_bp.route("/<room>", methods=["DELETE"])

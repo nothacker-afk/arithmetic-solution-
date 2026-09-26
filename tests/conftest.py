@@ -34,23 +34,33 @@ def _reset_metrics():
 
 @pytest.fixture
 def client(tmp_path, monkeypatch):
-    """Flask test client with an isolated SQLite DB + FTS initialized."""
+    """Flask test client with an isolated SQLite DB, columns ensured."""
     monkeypatch.setenv("DB_PATH", str(tmp_path / "test.db"))
 
     from web.backend import main as backend_main
     from web.backend import database
-    from web.backend import search as search_mod
 
+    # Init schema
     database.init_db()
+
+    # Belt-and-braces: call _ensure_columns() explicitly on this test's DB
     try:
+        with database.get_db() as conn:
+            database._ensure_extra_tables(conn)
+            database._ensure_columns(conn)
+    except Exception:
+        pass
+
+    # Init FTS
+    try:
+        from web.backend import search as search_mod
         search_mod.init_fts()
     except Exception:
-        pass  # FTS unavailable — search falls back to LIKE
+        pass
 
     backend_main._db_initialized = True
     backend_main.app.config["TESTING"] = True
 
-    # Reset WebSocket room state too
     try:
         from web.backend import realtime
         realtime.reset_state()

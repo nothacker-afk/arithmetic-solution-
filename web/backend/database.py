@@ -294,17 +294,34 @@ def _ensure_columns(conn) -> None:
 def _sqlite_init_db():
     with _sqlite_get_db() as conn:
         conn.executescript(SCHEMA)
-        _ensure_extra_tables(conn)
+        try:
+            _ensure_extra_tables(conn)
+        except Exception:
+            pass
+        try:
+            _ensure_columns(conn)
+        except Exception:
+            pass
 
 
 def _sqlite_reset_db():
     with _sqlite_get_db() as conn:
         for t in ("account_backups", "audit_log", "user_preferences",
                   "room_invites", "room_members", "rooms", "room_files",
-                  "chat_messages", "calculations", "users"):
+                  "chat_messages", "calculations", "users",
+                  "device_tokens", "passkeys", "passkey_challenges",
+                  "voice_clips", "message_reactions", "dm_threads",
+                  "dm_messages", "message_edits", "room_ttls", "thread_ttls"):
             conn.execute(f"DROP TABLE IF EXISTS {t}")
         conn.executescript(SCHEMA)
-        _ensure_extra_tables(conn)
+        try:
+            _ensure_extra_tables(conn)
+        except Exception:
+            pass
+        try:
+            _ensure_columns(conn)
+        except Exception:
+            pass
 
 
 if _USE_PG:
