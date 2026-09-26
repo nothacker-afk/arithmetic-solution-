@@ -5,13 +5,21 @@
  *   - API/GraphQL requests: network-first, fall back to cache
  *   - Offline fallback: serve /static/offline.html for navigations
  */
-const CACHE = "arith-pwa-v1";
+const CACHE = "arith-pwa-v2";
 const PRECACHE = [
     "/",
     "/static/manifest.json",
     "/static/offline.html",
     "/static/icon-192.svg",
     "/static/icon-512.svg",
+    "/static/css/design.css",
+    "/static/css/components.css",
+    "/static/js/api.js",
+    "/static/js/ui.js",
+    "/static/js/theme.js",
+    "/static/js/offline.js",
+    "/static/js/commands.js",
+    "/static/js/app.js",
 ];
 
 self.addEventListener("install", (event) => {

@@ -30,7 +30,11 @@ from .admin import admin_bp
 from .admin_dashboard import admin_dash_bp
 from .account import account_bp
 from .notifications import notifications_bp
+from .passkeys import passkeys_bp
+from .search import search_bp, init_fts as _init_search
+from .dms import dms_bp
 from .tracing import setup_tracing, current_trace_id
+from .jobs import start_if_enabled as _start_retention
 
 from arithmetic import plugins
 from arithmetic import (
@@ -65,6 +69,9 @@ app.register_blueprint(admin_bp)
 app.register_blueprint(admin_dash_bp)
 app.register_blueprint(account_bp)
 app.register_blueprint(notifications_bp)
+app.register_blueprint(passkeys_bp)
+app.register_blueprint(search_bp)
+app.register_blueprint(dms_bp)
 
 
 BASIC_OPS = {
@@ -319,6 +326,17 @@ def admin_page():
     if not path.exists():
         return jsonify({"error": "Admin dashboard not installed"}), 404
     return send_from_directory(str(FRONTEND_DIR), "admin.html")
+
+
+
+
+@app.route("/gallery")
+def gallery():
+    """Serve the component gallery (Phase 27)."""
+    path = FRONTEND_DIR / "gallery.html"
+    if not path.exists():
+        return jsonify({"error": "Gallery not installed"}), 404
+    return send_from_directory(str(FRONTEND_DIR), "gallery.html")
 
 
 if __name__ == "__main__":

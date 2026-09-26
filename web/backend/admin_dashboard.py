@@ -217,3 +217,21 @@ def clear_audit():
         cur = conn.execute("DELETE FROM audit_log")
         n = cur.rowcount
     return jsonify({"deleted_count": n})
+
+# ---------------------------------------------------------------------
+# Retention jobs (Phase 24)
+# ---------------------------------------------------------------------
+@admin_dash_bp.route("/retention", methods=["GET"])
+@require_admin
+def retention_status():
+    from .jobs import snapshot
+    return jsonify(snapshot())
+
+
+@admin_dash_bp.route("/retention/run", methods=["POST"])
+@require_admin
+def retention_run_now():
+    from .jobs import run_retention
+    deleted = run_retention()
+    return jsonify({"deleted": deleted})
+

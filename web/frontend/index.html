@@ -1,703 +1,191 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="theme-dark">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>Arithmetic Super App</title>
-<link rel="manifest" href="/manifest.json" />
-  <link rel="stylesheet" href="/static/themes.css" />
-  <script src="/static/i18n.js"></script>
 <meta name="theme-color" content="#38bdf8" />
+<link rel="manifest" href="/manifest.json" />
 <link rel="apple-touch-icon" href="/static/icon-192.svg" />
-<style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-        background: #0f172a; color: #e2e8f0; min-height: 100vh;
-        display: flex; justify-content: center; align-items: flex-start;
-        padding: 20px;
-    }
-    .container { background: #1e293b; border-radius: 16px; padding: 28px;
-        max-width: 560px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,.5); }
-    header { display: flex; justify-content: space-between; align-items: center;
-        margin-bottom: 20px; }
-    h1 { font-size: 1.35rem; background: linear-gradient(90deg, #38bdf8, #818cf8);
-        -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-    #auth-status { display: flex; align-items: center; gap: 10px; font-size: .8rem; }
-    #user-label { color: #94a3b8; }
-    #auth-btn { padding: 6px 12px; font-size: .8rem; border-radius: 8px;
-        background: #334155; color: #e2e8f0; border: none; cursor: pointer; }
-    #auth-btn:hover { background: #475569; }
-    label { display: block; font-size: .78rem; color: #94a3b8; margin-bottom: 4px; }
-    input, select, button {
-        font-family: inherit; font-size: .95rem; padding: 10px 12px;
-        border-radius: 8px; border: 1px solid #334155; background: #0f172a;
-        color: #e2e8f0; width: 100%; margin-bottom: 10px;
-    }
-    input:focus, select:focus { outline: 2px solid #38bdf8; border-color: transparent; }
-    .row { display: flex; gap: 10px; } .row > div { flex: 1; }
-    button.primary {
-        background: linear-gradient(90deg, #38bdf8, #818cf8); color: #0f172a;
-        font-weight: 600; cursor: pointer; border: none; transition: opacity .2s;
-    }
-    button.primary:hover { opacity: .9; }
-    .result { margin-top: 16px; padding: 14px; background: #0f172a;
-        border-radius: 8px; font-family: "Courier New", monospace; font-size: 1rem;
-        min-height: 44px; border-left: 3px solid #38bdf8; word-break: break-all; }
-    .error { border-left-color: #ef4444 !important; color: #fca5a5; }
-    .tabs { display: flex; gap: 6px; margin-bottom: 18px; flex-wrap: wrap; }
-    .tab { flex: 1; min-width: 70px; padding: 8px 6px; text-align: center;
-        border-radius: 8px; background: #0f172a; cursor: pointer; font-size: .8rem;
-        transition: background .2s; user-select: none; }
-    .tab.active { background: #38bdf8; color: #0f172a; font-weight: 600; }
-    .tab-panel { display: none; }
-    .tab-panel.active { display: block; }
-    .modal { position: fixed; inset: 0; background: rgba(0,0,0,.7);
-        display: flex; justify-content: center; align-items: center; z-index: 100; }
-    .modal.hidden { display: none; }
-    .modal-content { background: #1e293b; padding: 24px; border-radius: 12px;
-        width: 340px; max-width: 90vw; }
-    .modal-content h2 { font-size: 1.1rem; margin-bottom: 14px; }
-    .link { background: none; border: none; color: #38bdf8; cursor: pointer;
-        font-size: .8rem; text-decoration: underline; margin-top: 4px;
-        padding: 4px; width: auto; }
-    .error-msg { color: #fca5a5; font-size: .8rem; margin-top: 6px; min-height: 1em; }
-    .history-item { background: #0f172a; padding: 10px; border-radius: 6px;
-        margin-bottom: 6px; font-size: .82rem; display: flex;
-        justify-content: space-between; align-items: center; gap: 8px; }
-    .history-item code { color: #a5f3fc; font-family: monospace; }
-    .history-del { background: #7f1d1d; color: #fca5a5; border: none;
-        padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: .75rem;
-        width: auto; margin: 0; }
-    .muted { color: #64748b; font-size: .8rem; text-align: center; padding: 20px; }
-</style>
-  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-  <script src="/static/crypto.js"></script>
+<link rel="stylesheet" href="/static/css/design.css" />
+<link rel="stylesheet" href="/static/css/components.css" />
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script src="/static/crypto.js"></script>
+<script src="/static/i18n.js"></script>
 </head>
 <body>
-<div class="container">
-    <header>
-        <h1 data-i18n="app.title">Arithmetic Super App</h1>
-        <div id="auth-status">
-            <span id="user-label">Guest</span>
-            <button id="theme-btn" title="Theme" style="background:#334155;color:#e2e8f0;">🌓</button>
-            <button id="lang-btn" title="Language" style="background:#334155;color:#e2e8f0;">EN</button>
-            <button id="install-btn" style="display:none;background:#059669;color:#e2e8f0;" data-i18n="btn.install">Install</button>
-            <button id="auth-btn" data-i18n="btn.login">Login</button>
+<a class="skip-link" href="#main">Skip to content</a>
+<div class="app-shell">
+    <header class="app-header">
+        <h1 class="app-title">Arithmetic Super App</h1>
+        <div class="header-actions">
+            <span id="user-label" class="muted">Guest</span>
+            <button id="passkey-btn" class="btn btn-icon hidden" title="Sign in with passkey">🔑</button>
+            <button id="install-btn" class="btn btn-icon hidden" title="Install app">⤓</button>
+            <button id="theme-btn" class="btn btn-icon" title="Toggle theme">🌓</button>
+            <button id="lang-btn" class="btn btn-icon" title="Cycle language">EN</button>
+            <button id="auth-btn" class="btn">Login</button>
         </div>
     </header>
-
-    <!-- Auth modal -->
-    <div id="auth-modal" class="modal hidden">
-        <div class="modal-content">
-            <h2 id="auth-title">Login</h2>
-            <input id="auth-username" placeholder="Username" autocomplete="username" />
-            <input id="auth-email" placeholder="Email" autocomplete="email" style="display:none;" />
-            <input id="auth-password" type="password" placeholder="Password" autocomplete="current-password" />
-            <button class="primary" onclick="submitAuth()">Submit</button>
-            <button class="link" onclick="toggleAuthMode()" id="auth-toggle">Need an account? Register</button>
-            <button class="link" onclick="closeAuth()">Cancel</button>
-            <div id="auth-error" class="error-msg"></div>
-        </div>
-    </div>
-
-    <div class="tabs">
-        <div class="tab active" data-tab="basic" data-i18n="tabs.basic">Basic</div>
-        <div class="tab" data-tab="scientific" data-i18n="tabs.scientific">Scientific</div>
-        <div class="tab" data-tab="matrix" data-i18n="tabs.matrix">Matrix</div>
-        <div class="tab" data-tab="ai" data-i18n="tabs.ai">AI</div>
-        <div class="tab" data-tab="history" data-i18n="tabs.history">History</div>
-        <div class="tab" data-tab="realtime" data-i18n="tabs.live">Live</div>
-    </div>
-
-    <!-- Basic -->
-    <div class="tab-panel active" id="panel-basic">
-        <label>Operation</label>
-        <select id="basic-op">
-            <option value="add">Add (+)</option>
-            <option value="subtract">Subtract (-)</option>
-            <option value="multiply">Multiply (*)</option>
-            <option value="divide">Divide (/)</option>
-            <option value="power">Power (^)</option>
-            <option value="modulo">Modulo (%)</option>
-            <option value="floor_divide">Floor Divide (//)</option>
-        </select>
-        <div class="row">
-            <div><label>a</label><input type="number" id="basic-a" value="10" step="any" /></div>
-            <div><label>b</label><input type="number" id="basic-b" value="5" step="any" /></div>
-        </div>
-        <button class="primary" onclick="runBasic()">Calculate</button>
-    </div>
-
-    <!-- Scientific -->
-    <div class="tab-panel" id="panel-scientific">
-        <label>Operation</label>
-        <select id="sci-op">
-            <option value="sqrt">Square Root</option>
-            <option value="cbrt">Cube Root</option>
-            <option value="log10">Log base 10</option>
-            <option value="sin">Sine</option>
-            <option value="cos">Cosine</option>
-            <option value="tan">Tangent</option>
-            <option value="factorial">Factorial</option>
-            <option value="absolute">Absolute Value</option>
-        </select>
-        <label>x</label>
-        <input type="number" id="sci-x" value="16" step="any" />
-        <button class="primary" onclick="runSci()">Calculate</button>
-    </div>
-
-    <!-- Matrix -->
-    <div class="tab-panel" id="panel-matrix">
-        <label>Operation</label>
-        <select id="matrix-op">
-            <option value="matrix_add">Add</option>
-            <option value="matrix_subtract">Subtract</option>
-            <option value="matrix_multiply">Multiply</option>
-            <option value="matrix_transpose">Transpose (A only)</option>
-        </select>
-        <label>Matrix A (e.g. 1,2;3,4)</label>
-        <input type="text" id="matrix-a" value="1,2;3,4" />
-        <label>Matrix B (e.g. 5,6;7,8)</label>
-        <input type="text" id="matrix-b" value="5,6;7,8" />
-        <button class="primary" onclick="runMatrix()">Calculate</button>
-    </div>
-
-    <!-- AI -->
-    <div class="tab-panel" id="panel-ai">
-        <label>Ask in plain English</label>
-        <input type="text" id="ai-input" placeholder="e.g. what is 15% of 240" />
-        <button class="primary" onclick="runAI()">Solve</button>
-        <p class="muted" style="text-align:left;padding:6px 0;">
-            Try: <code>add 5 and 3</code> · <code>square root of 81</code> ·
-            <code>factorial of 6</code> · <code>10 divided by 4</code>
-        </p>
-    </div>
-
-    <!-- History -->
-    <div class="tab-panel" id="panel-history">
-        <div id="history-list"><div class="muted">Login to see your history.</div></div>
-        <button class="primary" onclick="loadHistory()">Refresh</button>
-    </div>
-
-
-    <!-- Real-time -->
-    <div class="tab-panel" id="panel-realtime">
-        <label>Room name (share with friends)</label>
-        <input type="text" id="rt-room" value="demo-room" />
-        <label>Your display name</label>
-        <input type="text" id="rt-user" value="guest" />
-        <div class="row">
-            <div><button class="primary" onclick="rtJoin()">Join</button></div>
-            <div><button class="primary" onclick="rtLeave()">Leave</button></div>
-        </div>
-        <p class="muted" id="rt-status" style="text-align:left;">Not connected.</p>
-        <div id="rt-users" class="muted" style="text-align:left;"></div>
-
-        <label style="margin-top:10px;">Quick calculation (broadcasts to room)</label>
-        <div class="row">
-            <div><input type="number" id="rt-a" value="7" step="any" /></div>
-            <div><input type="number" id="rt-b" value="6" step="any" /></div>
-        </div>
-        <select id="rt-op">
-            <option value="add">Add</option>
-            <option value="subtract">Subtract</option>
-            <option value="multiply">Multiply</option>
-            <option value="divide">Divide</option>
-        </select>
-        <button class="primary" onclick="rtBroadcast()">Broadcast to room</button>
-
-        
-        <label style="margin-top:20px;">Room chat</label>
-        <div class="row">
-            <div>
-                <label style="margin-top:0;">
-                    <input type="checkbox" id="rt-e2e" style="width:auto;margin-right:6px;"
-                           onchange="rtToggleE2E()" />
-                    Encrypt (E2E)
-                </label>
+    <nav class="tabs" role="tablist">
+        <div class="tab active" data-tab="basic" role="tab">Basic</div>
+        <div class="tab" data-tab="scientific" role="tab">Scientific</div>
+        <div class="tab" data-tab="matrix" role="tab">Matrix</div>
+        <div class="tab" data-tab="ai" role="tab">AI</div>
+        <div class="tab" data-tab="realtime" role="tab">Live</div>
+        <div class="tab" data-tab="history" role="tab">History</div>
+        <div class="tab" data-tab="search" role="tab">Search</div>
+        <div class="tab" data-tab="dms" role="tab">DMs</div>
+    </nav>
+    <main id="main" class="card">
+        <section class="tab-panel active" id="panel-basic" role="tabpanel">
+            <div class="field"><label for="basic-op">Operation</label>
+                <select id="basic-op" class="select">
+                    <option value="add">Add (+)</option>
+                    <option value="subtract">Subtract (−)</option>
+                    <option value="multiply">Multiply (×)</option>
+                    <option value="divide">Divide (÷)</option>
+                    <option value="power">Power (^)</option>
+                    <option value="modulo">Modulo (%)</option>
+                    <option value="floor_divide">Floor Divide (//)</option>
+                </select></div>
+            <div class="field-row">
+                <div class="field"><label for="basic-a">a</label><input id="basic-a" class="input" type="number" step="any" value="10" /></div>
+                <div class="field"><label for="basic-b">b</label><input id="basic-b" class="input" type="number" step="any" value="5" /></div>
             </div>
-        </div>
-        <input type="password" id="rt-passphrase" placeholder="Room passphrase (E2E only)"
-               style="display:none;" />
-        <div id="rt-chat-log" style="background:#0f172a;border-radius:6px;padding:10px;
-             max-height:200px;overflow-y:auto;margin-bottom:8px;font-size:.82rem;
-             min-height:60px;"></div>
-        <div id="rt-typing" class="muted" style="text-align:left;height:1em;"></div>
-        <div class="row">
-            <div style="flex:4;"><input type="text" id="rt-chat-input"
-                placeholder="Type a message…" onkeydown="rtChatKeydown(event)" /></div>
-            <div style="flex:1;"><button class="primary" onclick="rtSendChat()">Send</button></div>
-        </div>
+            <button id="basic-calc" class="btn btn-primary">Calculate</button>
+        </section>
+        <section class="tab-panel" id="panel-scientific" role="tabpanel">
+            <div class="field"><label for="sci-op">Operation</label>
+                <select id="sci-op" class="select">
+                    <option value="sqrt">Square Root</option>
+                    <option value="cbrt">Cube Root</option>
+                    <option value="log10">Log base 10</option>
+                    <option value="sin">Sine</option>
+                    <option value="cos">Cosine</option>
+                    <option value="tan">Tangent</option>
+                    <option value="factorial">Factorial</option>
+                    <option value="absolute">Absolute Value</option>
+                </select></div>
+            <div class="field"><label for="sci-x">x</label><input id="sci-x" class="input" type="number" step="any" value="16" /></div>
+            <button id="sci-calc" class="btn btn-primary">Calculate</button>
+        </section>
+        <section class="tab-panel" id="panel-matrix" role="tabpanel">
+            <div class="field"><label for="matrix-op">Operation</label>
+                <select id="matrix-op" class="select">
+                    <option value="matrix_add">Add</option>
+                    <option value="matrix_subtract">Subtract</option>
+                    <option value="matrix_multiply">Multiply</option>
+                    <option value="matrix_transpose">Transpose (A only)</option>
+                </select></div>
+            <div class="field"><label for="matrix-a">Matrix A (e.g. 1,2;3,4)</label><input id="matrix-a" class="input" value="1,2;3,4" /></div>
+            <div class="field"><label for="matrix-b">Matrix B</label><input id="matrix-b" class="input" value="5,6;7,8" /></div>
+            <button id="matrix-calc" class="btn btn-primary">Calculate</button>
+        </section>
+        <section class="tab-panel" id="panel-ai" role="tabpanel">
+            <div class="field"><label for="ai-input">Ask in plain English</label>
+                <input id="ai-input" class="input" placeholder="e.g. what is 15% of 240" /></div>
+            <button id="ai-solve" class="btn btn-primary">Solve</button>
+        </section>
+        <section class="tab-panel" id="panel-realtime" role="tabpanel">
+            <div class="field-row">
+                <div class="field"><label for="rt-room">Room</label><input id="rt-room" class="input" value="demo-room" /></div>
+                <div class="field"><label for="rt-user">Display name</label><input id="rt-user" class="input" value="guest" /></div>
+            </div>
+            <div class="field-row">
+                <button id="rt-join" class="btn btn-primary">Join</button>
+                <button id="rt-leave" class="btn">Leave</button>
+            </div>
+            <p id="rt-status" class="muted">Not connected.</p>
+            <div id="rt-avatars"></div>
+            <hr style="border:none;border-top:1px solid var(--border);margin:var(--sp-4) 0;" />
+            <h3>Chat</h3>
+            <div class="field">
+                <label for="rt-e2e"><input id="rt-e2e" type="checkbox" style="width:auto;margin-right:6px;" /> E2E encrypt</label>
+                <input id="rt-passphrase" class="input hidden" type="password" placeholder="Room passphrase" />
+            </div>
+            <div id="rt-chat-log" class="chat-log"></div>
+            <p id="rt-typing" class="muted" style="height:1.2em;"></p>
+            <div class="field-row">
+                <input id="rt-chat-input" class="input" placeholder="Type a message…" />
+                <button id="rt-send" class="btn btn-primary" style="flex:0 0 auto;">Send</button>
+            </div>
+            <h3 class="mt-4">Files</h3>
+            <div id="rt-file-list"></div>
+            <h3 class="mt-4">Live feed</h3>
+            <div id="rt-feed"></div>
+        </section>
 
-        
-        
-        
-        <label style="margin-top:20px;">Voice / video call</label>
-        <div class="row">
-            <div><button class="primary" onclick="rtStartCall()">Start call</button></div>
-            <div><button class="primary" onclick="rtEndCall()">End call</button></div>
-        </div>
-        <div id="rt-videos" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px;"></div>
-        <video id="rt-local-video" autoplay muted playsinline style="display:none;"></video>
+        <section class="tab-panel" id="panel-search" role="tabpanel">
+            <div class="field">
+                <label for="search-input">Search</label>
+                <input id="search-input" class="input" placeholder="Type to search calculations and chat…" />
+            </div>
+            <div class="field-row">
+                <div class="field">
+                    <label for="search-scope">Scope</label>
+                    <select id="search-scope" class="select">
+                        <option value="all">Everything</option>
+                        <option value="calculations">Calculations only</option>
+                        <option value="chat">Chat only</option>
+                    </select>
+                </div>
+            </div>
+            <button id="search-go" class="btn btn-primary">Search</button>
+            <p id="search-engine" class="muted mt-4" style="font-size:var(--fs-sm);"></p>
+            <div id="search-results" class="mt-4"></div>
+        </section>
 
-        <label style="margin-top:20px;">Room management</label>
-        <div class="row">
-            <div><button class="primary" onclick="rtClaimRoom()">Claim room</button></div>
-            <div><button class="primary" onclick="rtShowInvite()">Invite</button></div>
-        </div>
-        <div class="row">
-            <div><button class="primary" onclick="rtShowMembers()">Members</button></div>
-            <div><button class="primary" onclick="rtDeleteRoom()">Delete room</button></div>
-        </div>
-        <div id="rt-room-info" class="muted" style="text-align:left;"></div>
-        <div id="rt-invite-box" style="display:none;">
-            <input type="text" id="rt-invite-url" readonly />
-            <button class="primary" onclick="rtCopyInvite()">Copy invite URL</button>
-        </div>
-        <div id="rt-members-box" style="display:none;margin-top:8px;"></div>
-
-        <label style="margin-top:20px;">Room files (E2E encrypted)</label>
-        <input type="file" id="rt-file-input" />
-        <button class="primary" onclick="rtUploadFile()">Upload</button>
-        <div id="rt-file-list" style="margin-top:10px;"></div>
-
-        <label style="margin-top:10px;">Live feed</label>
-        <div id="rt-feed"></div>
-    </div>
-
-    <div class="result" id="result">Ready.</div>
+        <section class="tab-panel" id="panel-dms" role="tabpanel">
+            <div class="field-row">
+                <div class="field"><label for="dm-new-user">Start conversation with</label>
+                    <input id="dm-new-user" class="input" placeholder="username" /></div>
+                <button id="dm-start" class="btn btn-primary" style="align-self:flex-end;margin-bottom:var(--sp-3);">Start</button>
+            </div>
+            <div class="field">
+                <label for="dm-passphrase">Shared passphrase (E2E)</label>
+                <input id="dm-passphrase" class="input" type="password" placeholder="Agree on this out-of-band" />
+            </div>
+            <h3>Conversations</h3>
+            <button id="dm-refresh" class="btn btn-ghost" style="margin-bottom:var(--sp-2);">Refresh</button>
+            <div id="dm-threads"></div>
+            <div id="dm-conversation" class="hidden mt-4">
+                <h3>Chat with <span id="dm-conversation-title"></span></h3>
+                <div id="dm-messages" class="chat-log" style="max-height:300px;"></div>
+                <div class="field-row mt-2">
+                    <input id="dm-input" class="input" placeholder="Type a message…" />
+                    <button id="dm-send" class="btn btn-primary" style="flex:0 0 auto;">Send</button>
+                </div>
+            </div>
+        </section>
+        <section class="tab-panel" id="panel-history" role="tabpanel">
+            <div id="history-list"></div>
+            <button id="history-refresh" class="btn mt-4">Refresh</button>
+        </section>
+        <div id="result" class="result-panel mt-4">Ready.</div>
+    </main>
+    <footer class="muted text-center mt-4" style="font-size:var(--fs-xs);">
+        Press <span class="cmdk-kbd">Ctrl</span>+<span class="cmdk-kbd">K</span> ·
+        <a href="/admin">Admin</a>
+    </footer>
 </div>
-
-<script>
-// ============ Config ============
-const API = window.location.origin.startsWith("http")
-    ? window.location.origin : "http://localhost:8000";
-
-// ============ State ============
-const state = {
-    token: localStorage.getItem("token") || null,
-    username: localStorage.getItem("username") || null,
-    authMode: "login",
-};
-
-// ============ Tabs ============
-document.querySelectorAll(".tab").forEach(tab => {
-    tab.addEventListener("click", () => {
-        document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
-        document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
-        tab.classList.add("active");
-        document.getElementById("panel-" + tab.dataset.tab).classList.add("active");
-        if (tab.dataset.tab === "history") loadHistory();
-    });
-});
-
-// ============ Result panel ============
-function showResult(text, isError = false) {
-    const el = document.getElementById("result");
-    el.textContent = text;
-    el.classList.toggle("error", isError);
-}
-
-// ============ API helpers ============
-async function api(path, options = {}) {
-    const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
-    if (state.token) headers["Authorization"] = "Bearer " + state.token;
-    const res = await fetch(API + path, { ...options, headers });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || data.detail || "Request failed");
-    return data;
-}
-
-// ============ Auth ============
-function updateAuthUI() {
-    const label = document.getElementById("user-label");
-    const btn = document.getElementById("auth-btn");
-    if (state.token && state.username) {
-        label.textContent = state.username;
-        btn.textContent = i18n.t("btn.logout", "Logout");
-    } else {
-        label.textContent = i18n.t("result.guest", "Guest");
-        btn.textContent = i18n.t("btn.login", "Login");
-    }
-}
-
-document.getElementById("auth-btn").addEventListener("click", () => {
-    if (state.token) {
-        state.token = null; state.username = null;
-        localStorage.removeItem("token"); localStorage.removeItem("username");
-        updateAuthUI();
-        showResult("Logged out.");
-    } else {
-        openAuth("login");
-    }
-});
-
-function openAuth(mode) {
-    state.authMode = mode;
-    document.getElementById("auth-modal").classList.remove("hidden");
-    document.getElementById("auth-title").textContent = mode === "login" ? "Login" : "Register";
-    document.getElementById("auth-email").style.display = mode === "register" ? "block" : "none";
-    document.getElementById("auth-toggle").textContent =
-        mode === "login" ? "Need an account? Register" : "Have an account? Login";
-    document.getElementById("auth-error").textContent = "";
-}
-
-function closeAuth() {
-    document.getElementById("auth-modal").classList.add("hidden");
-}
-
-function toggleAuthMode() {
-    openAuth(state.authMode === "login" ? "register" : "login");
-}
-
-async function submitAuth() {
-    const username = document.getElementById("auth-username").value.trim();
-    const password = document.getElementById("auth-password").value;
-    const email = document.getElementById("auth-email").value.trim();
-    const errEl = document.getElementById("auth-error");
-    errEl.textContent = "";
-    try {
-        const path = state.authMode === "login" ? "/api/auth/login" : "/api/auth/register";
-        const body = state.authMode === "login"
-            ? { username, password }
-            : { username, email, password };
-        const data = await api(path, { method: "POST", body: JSON.stringify(body) });
-        state.token = data.token;
-        state.username = data.username;
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("username", data.username);
-        updateAuthUI();
-        closeAuth();
-        showResult("Welcome, " + data.username + "!");
-    } catch (e) {
-        errEl.textContent = e.message;
-    }
-}
-
-// ============ Basic ============
-async function runBasic() {
-    try {
-        const data = await api("/api/basic", {
-            method: "POST",
-            body: JSON.stringify({
-                operation: document.getElementById("basic-op").value,
-                a: parseFloat(document.getElementById("basic-a").value),
-                b: parseFloat(document.getElementById("basic-b").value),
-            }),
-        });
-        showResult(`${data.expression} = ${data.result}`);
-    } catch (e) { showResult("Error: " + e.message, true); }
-}
-
-// ============ Scientific ============
-async function runSci() {
-    try {
-        const data = await api("/api/scientific", {
-            method: "POST",
-            body: JSON.stringify({
-                operation: document.getElementById("sci-op").value,
-                x: parseFloat(document.getElementById("sci-x").value),
-            }),
-        });
-        showResult(`${data.expression} = ${data.result}`);
-    } catch (e) { showResult("Error: " + e.message, true); }
-}
-
-// ============ Matrix ============
-function parseMatrix(str) {
-    return str.split(";").map(r => r.split(",").map(Number));
-}
-async function runMatrix() {
-    try {
-        const op = document.getElementById("matrix-op").value;
-        const body = { operation: op, a: parseMatrix(document.getElementById("matrix-a").value) };
-        if (op !== "matrix_transpose") body.b = parseMatrix(document.getElementById("matrix-b").value);
-        const data = await api("/api/matrix", { method: "POST", body: JSON.stringify(body) });
-        showResult(`${data.expression} = ${JSON.stringify(data.result)}`);
-    } catch (e) { showResult("Error: " + e.message, true); }
-}
-
-// ============ AI ============
-async function runAI() {
-    const text = document.getElementById("ai-input").value.trim();
-    if (!text) { showResult("Type a math question.", true); return; }
-    try {
-        const data = await api("/api/ai", { method: "POST", body: JSON.stringify({ text }) });
-        showResult(`${data.expression} = ${data.result}`);
-    } catch (e) { showResult("Error: " + e.message, true); }
-}
-
-// ============ History ============
-async function loadHistory() {
-    const list = document.getElementById("history-list");
-    if (!state.token) {
-        list.innerHTML = '<div class="muted">Login to see your history.</div>';
-        return;
-    }
-    try {
-        const items = await api("/api/history?limit=50");
-        if (!items.length) {
-            list.innerHTML = '<div class="muted">No calculations yet.</div>';
-            return;
-        }
-        list.innerHTML = items.map(it => `
-            <div class="history-item">
-                <span><code>${it.expression}</code> = ${it.result}</span>
-                <button class="history-del" onclick="deleteHistory(${it.id})">×</button>
-            </div>
-        `).join("");
-    } catch (e) {
-        list.innerHTML = `<div class="muted">Error: ${e.message}</div>`;
-    }
-}
-
-async function deleteHistory(id) {
-    try {
-        await api("/api/history/" + id, { method: "DELETE" });
-        loadHistory();
-    } catch (e) { showResult("Error: " + e.message, true); }
-}
-
-
-// ============ Real-time collaboration ============
-let socket = null;
-let currentRoom = null;
-
-function rtSetStatus(msg) {
-    document.getElementById("rt-status").textContent = msg;
-}
-
-function rtSetUsers(users) {
-    document.getElementById("rt-users").textContent =
-        users && users.length ? "In room: " + users.join(", ") : "";
-}
-
-function rtAddFeedLine(text) {
-    const feed = document.getElementById("rt-feed");
-    const line = document.createElement("div");
-    line.className = "history-item";
-    line.innerHTML = text;
-    feed.prepend(line);
-    while (feed.children.length > 30) feed.removeChild(feed.lastChild);
-}
-
-function rtEnsureSocket() {
-    if (socket) return socket;
-    socket = io(API);
-    socket.on("connect", () => rtSetStatus("Connected."));
-    socket.on("disconnect", () => rtSetStatus("Disconnected."));
-    socket.on("joined", (data) => {
-        currentRoom = data.room;
-        rtSetStatus("Joined room: " + data.room);
-        rtSetUsers(data.users);
-    });
-    socket.on("user_joined", (data) => {
-        rtAddFeedLine(`<em>${data.username} joined</em>`);
-        rtSetUsers(data.users);
-    });
-    socket.on("user_left", (data) => {
-        rtAddFeedLine(`<em>${data.username} left</em>`);
-        rtSetUsers(data.users);
-    });
-    socket.on("calc_received", (data) => {
-        rtAddFeedLine(`<code>${data.username}</code>: ${data.expression} = <strong>${data.result}</strong>`);
-    });
-    socket.on("presence", (data) => rtSetUsers(data.users));
-    socket.on("error", (data) => rtSetStatus("Error: " + (data.error || "unknown")));
-    socket.on("webrtc_peer_list", (data) => {
-        for (const p of data.peers) _rtcMakeOffer(p.sid, p.username);
-    });
-    socket.on("webrtc_peer_joined", (data) => {
-        // Wait — the new peer will send us an offer.
-        rtSetStatus((data.username || "peer") + " joined the call");
-    });
-    socket.on("webrtc_peer_left", (data) => {
-        if (_rtcPcs[data.sid]) { _rtcPcs[data.sid].close(); delete _rtcPcs[data.sid]; }
-        _rtcRemoveTile(data.sid);
-    });
-    socket.on("webrtc_offer", async (data) => {
-        const pc = _rtcPc(data.from_sid, data.from_username);
-        await pc.setRemoteDescription(data.sdp);
-        const answer = await pc.createAnswer();
-        await pc.setLocalDescription(answer);
-        socket.emit("webrtc_answer", { target_sid: data.from_sid, sdp: answer });
-    });
-    socket.on("webrtc_answer", async (data) => {
-        const pc = _rtcPcs[data.from_sid];
-        if (pc) await pc.setRemoteDescription(data.sdp);
-    });
-    socket.on("webrtc_ice", async (data) => {
-        const pc = _rtcPcs[data.from_sid];
-        if (pc && data.candidate) {
-            try { await pc.addIceCandidate(data.candidate); } catch (e) { /* ignore */ }
-        }
-    });
-    socket.on("webrtc_error", (data) => rtSetStatus("WebRTC: " + (data.error || "error")));
-
-    return socket;
-}
-
-function rtJoin() {
-    const room = document.getElementById("rt-room").value.trim();
-    const user = document.getElementById("rt-user").value.trim() || "guest";
-    if (!room) { rtSetStatus("Room name required."); return; }
-    rtEnsureSocket().emit("join", { room, username: user });
-}
-
-function rtLeave() {
-    if (!socket || !currentRoom) return;
-    socket.emit("leave", { room: currentRoom });
-    currentRoom = null;
-    rtSetStatus("Left room.");
-    rtSetUsers([]);
-}
-
-async function rtBroadcast() {
-    if (!socket || !currentRoom) {
-        rtSetStatus("Join a room first.");
-        return;
-    }
-    const user = document.getElementById("rt-user").value.trim() || "guest";
-    const op = document.getElementById("rt-op").value;
-    const a = parseFloat(document.getElementById("rt-a").value);
-    const b = parseFloat(document.getElementById("rt-b").value);
-    try {
-        const data = await api("/api/basic", {
-            method: "POST",
-            body: JSON.stringify({ operation: op, a, b }),
-        });
-        rtAddFeedLine(`<code>${user}</code> (you): ${data.expression} = <strong>${data.result}</strong>`);
-        socket.emit("broadcast_calc", {
-            room: currentRoom,
-            username: user,
-            expression: data.expression,
-            result: data.result,
-            operation: op,
-        });
-    } catch (e) { rtSetStatus("Error: " + e.message); }
-}
-
-
-// ============ PWA: service worker + install prompt ============
-if ("serviceWorker" in navigator) {
-    window.addEventListener("load", () => {
-        navigator.serviceWorker.register("/sw.js", { scope: "/" })
-            .then((reg) => console.log("[PWA] SW registered:", reg.scope))
-            .catch((err) => console.error("[PWA] SW registration failed:", err));
-    });
-}
-
-let deferredInstallPrompt = null;
-window.addEventListener("beforeinstallprompt", (e) => {
-    e.preventDefault();
-    deferredInstallPrompt = e;
-    const btn = document.getElementById("install-btn");
-    if (btn) btn.style.display = "inline-block";
-});
-
-document.addEventListener("click", async (e) => {
-    if (e.target.id !== "install-btn") return;
-    if (!deferredInstallPrompt) return;
-    deferredInstallPrompt.prompt();
-    const choice = await deferredInstallPrompt.userChoice;
-    console.log("[PWA] install choice:", choice.outcome);
-    deferredInstallPrompt = null;
-    document.getElementById("install-btn").style.display = "none";
-});
-
-window.addEventListener("appinstalled", () => {
-    console.log("[PWA] installed");
-    deferredInstallPrompt = null;
-});
-
-
-// ============ Theme (Phase 12) ============
-const THEME_CYCLE = ["auto", "light", "dark"];
-
-function applyTheme(mode) {
-    document.documentElement.classList.remove("theme-light", "theme-dark");
-    if (mode === "auto") {
-        const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-        document.documentElement.classList.add(prefersDark ? "theme-dark" : "theme-light");
-    } else {
-        document.documentElement.classList.add("theme-" + mode);
-    }
-    localStorage.setItem("theme", mode);
-    const btn = document.getElementById("theme-btn");
-    if (btn) btn.textContent = mode === "auto" ? "🌓" : mode === "light" ? "☀️" : "🌙";
-}
-
-function cycleTheme() {
-    const cur = localStorage.getItem("theme") || "auto";
-    const next = THEME_CYCLE[(THEME_CYCLE.indexOf(cur) + 1) % THEME_CYCLE.length];
-    applyTheme(next);
-    if (state.token) {
-        api("/api/prefs", {
-            method: "PUT",
-            body: JSON.stringify({ theme: next, language: i18n.currentLocale() }),
-        }).catch(() => {});
-    }
-}
-
-document.addEventListener("click", (e) => {
-    if (e.target.id === "theme-btn") cycleTheme();
-});
-
-// ============ Language (Phase 12) ============
-async function cycleLanguage() {
-    const available = i18n.available();
-    const cur = i18n.currentLocale();
-    const next = available[(available.indexOf(cur) + 1) % available.length];
-    await i18n.load(next);
-    updateSwitcherLabel();
-    updateAuthUI();
-    if (state.token) {
-        api("/api/prefs", {
-            method: "PUT",
-            body: JSON.stringify({ theme: localStorage.getItem("theme") || "auto", language: next }),
-        }).catch(() => {});
-    }
-}
-
-function updateSwitcherLabel() {
-    const btn = document.getElementById("lang-btn");
-    if (btn) btn.textContent = i18n.currentLocale().toUpperCase();
-}
-
-document.addEventListener("click", (e) => {
-    if (e.target.id === "lang-btn") cycleLanguage();
-});
-
-// React to OS theme changes when in auto mode
-if (window.matchMedia) {
-    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
-        if ((localStorage.getItem("theme") || "auto") === "auto") applyTheme("auto");
-    });
-}
-
-// ============ Init ============
-applyTheme(localStorage.getItem("theme") || "auto");
-
-// Initial language: saved -> navigator -> backend detect
-(async () => {
-    const saved = localStorage.getItem("language");
-    if (saved) {
-        await i18n.load(saved);
-    } else {
-        try {
-            const detected = await api("/api/i18n/detect");
-            await i18n.load(detected.locale || i18n.detectFromNavigator());
-        } catch {
-            await i18n.load(i18n.detectFromNavigator());
-        }
-    }
-    updateSwitcherLabel();
-    updateAuthUI();
-})();
-
-updateAuthUI();
-rtHandleInviteFromURL();
-</script>
+<script src="/static/js/api.js"></script>
+<script src="/static/js/ui.js"></script>
+<script src="/static/js/theme.js"></script>
+<script src="/static/js/i18n_client.js"></script>
+<script src="/static/js/commands.js"></script>
+<script src="/static/js/tabs/basic.js"></script>
+<script src="/static/js/tabs/scientific.js"></script>
+<script src="/static/js/tabs/matrix.js"></script>
+<script src="/static/js/tabs/ai.js"></script>
+<script src="/static/js/tabs/history.js"></script>
+<script src="/static/js/tabs/live.js"></script>
+<script src="/static/js/tabs/search.js"></script>
+<script src="/static/js/tabs/dms.js"></script>
+<script src="/static/js/presence.js"></script>
+<script src="/static/js/offline.js"></script>
+<script src="/static/js/pwa.js"></script>
+<script src="/static/js/passkey.js"></script>
+<script src="/static/js/app.js"></script>
 </body>
 </html>

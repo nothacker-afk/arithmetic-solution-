@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en" class="theme-dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Component Gallery — Arithmetic Super App</title>
+<link rel="stylesheet" href="/static/css/design.css" />
+<link rel="stylesheet" href="/static/css/components.css" />
+<style>
+    .section { margin-bottom: var(--sp-8); }
+    .section h2 { color: var(--accent); margin-bottom: var(--sp-4); }
+    .row { display: flex; gap: var(--sp-3); flex-wrap: wrap; align-items: center; margin-bottom: var(--sp-3); }
+    .demo-panel { background: var(--bg-1); padding: var(--sp-5); border-radius: var(--radius-lg); border: 1px solid var(--border); }
+    .swatch { display: inline-block; width: 60px; height: 60px; border-radius: var(--radius); margin-right: var(--sp-2); border: 1px solid var(--border); }
+    .token { display: inline-block; font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--fg-2); margin-right: var(--sp-4); }
+</style>
+</head>
+<body>
+<div class="app-shell" style="max-width:900px;">
+    <header class="app-header">
+        <h1 class="app-title">Component Gallery</h1>
+        <div class="header-actions">
+            <button id="theme-btn" class="btn btn-icon">🌓</button>
+            <a href="/" class="btn">← Back to app</a>
+        </div>
+    </header>
+
+    <div class="demo-panel">
+        <div class="section">
+            <h2>Colors</h2>
+            <div class="row">
+                <div><span class="swatch" style="background:var(--bg-0)"></span><div class="token">--bg-0</div></div>
+                <div><span class="swatch" style="background:var(--bg-1)"></span><div class="token">--bg-1</div></div>
+                <div><span class="swatch" style="background:var(--bg-2)"></span><div class="token">--bg-2</div></div>
+                <div><span class="swatch" style="background:var(--bg-3)"></span><div class="token">--bg-3</div></div>
+                <div><span class="swatch" style="background:var(--accent)"></span><div class="token">--accent</div></div>
+                <div><span class="swatch" style="background:var(--accent-2)"></span><div class="token">--accent-2</div></div>
+                <div><span class="swatch" style="background:var(--danger)"></span><div class="token">--danger</div></div>
+                <div><span class="swatch" style="background:var(--success)"></span><div class="token">--success</div></div>
+                <div><span class="swatch" style="background:var(--warning)"></span><div class="token">--warning</div></div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Typography</h2>
+            <h1>H1 — The quick brown fox</h1>
+            <h2>H2 — The quick brown fox</h2>
+            <h3>H3 — The quick brown fox</h3>
+            <p>Body text. Lorem ipsum dolor sit amet, consectetur adipiscing elit. <code>Inline code</code> looks like this.</p>
+            <p class="muted">Muted paragraph.</p>
+        </div>
+
+        <div class="section">
+            <h2>Buttons</h2>
+            <div class="row">
+                <button class="btn">Default</button>
+                <button class="btn btn-primary">Primary</button>
+                <button class="btn btn-danger">Danger</button>
+                <button class="btn btn-ghost">Ghost</button>
+                <button class="btn" disabled>Disabled</button>
+                <button class="btn btn-icon">⚙</button>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Form fields</h2>
+            <div class="field"><label>Text input</label><input class="input" placeholder="Type here…" /></div>
+            <div class="field"><label>Select</label>
+                <select class="select"><option>Option A</option><option>Option B</option></select>
+            </div>
+            <div class="field-row">
+                <div class="field"><label>Left</label><input class="input" /></div>
+                <div class="field"><label>Right</label><input class="input" /></div>
+            </div>
+            <div class="field">
+                <label><input type="checkbox" style="width:auto;margin-right:6px;" /> Checkbox label</label>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Tabs</h2>
+            <nav class="tabs">
+                <div class="tab active">Active</div>
+                <div class="tab">Inactive</div>
+                <div class="tab">Another</div>
+            </nav>
+        </div>
+
+        <div class="section">
+            <h2>Cards</h2>
+            <div class="card">
+                <h3>Card title</h3>
+                <p class="muted">This is a card with some content.</p>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Result panel</h2>
+            <div class="result-panel">42 + 8 = 50</div>
+            <div class="result-panel success mt-2">15% of 240 = 36</div>
+            <div class="result-panel error mt-2">Error: Division by zero</div>
+        </div>
+
+        <div class="section">
+            <h2>Badges</h2>
+            <div class="row">
+                <span class="badge">Default</span>
+                <span class="badge live">Live</span>
+                <span class="badge off">Offline</span>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Chat log</h2>
+            <div class="chat-log" style="max-height:140px;">
+                <div class="chat-line"><strong>alice</strong>: Hi there!</div>
+                <div class="chat-line"><strong>bob</strong>: 🔒 encrypted message</div>
+                <div class="chat-line system">carol joined</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Feed items</h2>
+            <div class="feed-item">Simple feed item</div>
+            <div class="feed-item" style="display:flex;justify-content:space-between;">
+                <span>Item with action</span>
+                <button class="btn btn-ghost btn-icon">×</button>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Skeletons</h2>
+            <div class="skeleton" style="height:40px;margin-bottom:8px;"></div>
+            <div class="skeleton" style="height:40px;width:60%;"></div>
+        </div>
+
+        <div class="section">
+            <h2>Empty state</h2>
+            <div class="empty">Nothing here yet.</div>
+        </div>
+
+        <div class="section">
+            <h2>Toasts (auto-dismiss)</h2>
+            <div class="row">
+                <button class="btn" onclick="demoToast('info')">Info toast</button>
+                <button class="btn" onclick="demoToast('success')">Success toast</button>
+                <button class="btn" onclick="demoToast('error')">Error toast</button>
+                <button class="btn" onclick="demoToast('warning')">Warning toast</button>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Modal</h2>
+            <button class="btn btn-primary" onclick="demoModal()">Open modal</button>
+        </div>
+
+        <div class="section">
+            <h2>Command palette</h2>
+            <button class="btn" onclick="alert('In the real app, press Ctrl+K')">Show me (real app: Ctrl+K)</button>
+        </div>
+    </div>
+</div>
+
+<div class="toast-container" id="toast-root"></div>
+
+<script src="/static/js/theme.js" onerror="void 0"></script>
+<script>
+// Minimal theme toggle so the gallery stands alone
+const API = { isLoggedIn: () => false, put: async () => {}, };
+const I18n = { current: () => "en" };
+
+function toggleTheme() {
+    const cur = localStorage.getItem("theme") || "auto";
+    const next = cur === "auto" ? "light" : cur === "light" ? "dark" : "auto";
+    document.documentElement.classList.remove("theme-light", "theme-dark");
+    if (next === "auto") {
+        document.documentElement.classList.add(
+            window.matchMedia("(prefers-color-scheme: dark)").matches ? "theme-dark" : "theme-light");
+    } else {
+        document.documentElement.classList.add("theme-" + next);
+    }
+    localStorage.setItem("theme", next);
+    document.getElementById("theme-btn").textContent = next === "auto" ? "🌓" : next === "light" ? "☀️" : "🌙";
+}
+document.getElementById("theme-btn").addEventListener("click", toggleTheme);
+
+function demoToast(kind) {
+    const root = document.getElementById("toast-root");
+    const el = document.createElement("div");
+    el.className = "toast " + kind;
+    el.textContent = kind.charAt(0).toUpperCase() + kind.slice(1) + " toast message";
+    root.appendChild(el);
+    setTimeout(() => { el.style.animation = "slideIn 220ms reverse"; setTimeout(() => el.remove(), 220); }, 2600);
+}
+
+function demoModal() {
+    const backdrop = document.createElement("div");
+    backdrop.className = "modal-backdrop";
+    backdrop.innerHTML = `
+        <div class="modal" role="dialog" aria-modal="true">
+            <h2>Example modal</h2>
+            <p class="muted">This is a modal dialog with body content.</p>
+            <div class="field"><label>Sample input</label><input class="input" /></div>
+            <div class="field-row">
+                <button class="btn btn-primary" id="modal-ok">OK</button>
+                <button class="btn" id="modal-cancel">Cancel</button>
+            </div>
+        </div>`;
+    backdrop.addEventListener("click", (e) => { if (e.target === backdrop) backdrop.remove(); });
+    document.body.appendChild(backdrop);
+    backdrop.querySelector("#modal-ok").addEventListener("click", () => { backdrop.remove(); demoToast("success"); });
+    backdrop.querySelector("#modal-cancel").addEventListener("click", () => backdrop.remove());
+}
+
+// Apply saved theme on load
+(function () {
+    const saved = localStorage.getItem("theme") || "auto";
+    if (saved === "auto") {
+        document.documentElement.classList.add(
+            window.matchMedia("(prefers-color-scheme: dark)").matches ? "theme-dark" : "theme-light");
+    } else {
+        document.documentElement.classList.add("theme-" + saved);
+    }
+    document.getElementById("theme-btn").textContent = saved === "auto" ? "🌓" : saved === "light" ? "☀️" : "🌙";
+})();
+</script>
+</body>
+</html>

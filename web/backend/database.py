@@ -144,6 +144,57 @@ EXTRA_TABLES = [
     )
     """,
     "CREATE INDEX IF NOT EXISTS idx_device_user ON device_tokens(user_id)",
+    """
+    CREATE TABLE IF NOT EXISTS passkeys (
+        credential_id TEXT PRIMARY KEY,
+        user_id INTEGER NOT NULL,
+        public_key TEXT NOT NULL,
+        sign_count INTEGER NOT NULL DEFAULT 0,
+        name TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        last_used_at TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_passkeys_user ON passkeys(user_id)",
+    """
+    CREATE TABLE IF NOT EXISTS passkey_challenges (
+        user_id INTEGER NOT NULL,
+        kind TEXT NOT NULL,
+        challenge TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (user_id, kind)
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS dm_threads (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_a INTEGER NOT NULL,
+        user_b INTEGER NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        last_message_at TIMESTAMP,
+        UNIQUE(user_a, user_b),
+        FOREIGN KEY (user_a) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (user_b) REFERENCES users(id) ON DELETE CASCADE
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_dm_threads_a ON dm_threads(user_a, last_message_at DESC)",
+    "CREATE INDEX IF NOT EXISTS idx_dm_threads_b ON dm_threads(user_b, last_message_at DESC)",
+    """
+    CREATE TABLE IF NOT EXISTS dm_messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        thread_id INTEGER NOT NULL,
+        sender_id INTEGER NOT NULL,
+        body TEXT NOT NULL,
+        encrypted INTEGER NOT NULL DEFAULT 1,
+        read_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (thread_id) REFERENCES dm_threads(id) ON DELETE CASCADE,
+        FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_dm_messages_thread ON dm_messages(thread_id, created_at)",
+
 ]
 
 

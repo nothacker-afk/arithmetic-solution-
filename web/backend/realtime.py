@@ -15,6 +15,19 @@ socketio = SocketIO(cors_allowed_origins="*", async_mode="threading")
 ROOMS: dict[str, dict[str, str]] = defaultdict(dict)
 
 
+
+
+def _user_color(name: str) -> str:
+    """Deterministic HSL color for a username (same logic as the client)."""
+    h = 0
+    for c in name:
+        h = ((h << 5) - h + ord(c)) & 0xFFFFFFFF
+    if h >= 0x80000000:
+        h -= 0x100000000
+    hue = abs(h) % 360
+    return f"hsl({hue} 65% 50%)"
+
+
 def _room_users(room_id: str) -> list[str]:
     return sorted(set(ROOMS.get(room_id, {}).values()))
 

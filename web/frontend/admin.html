@@ -4,6 +4,8 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Admin — Arithmetic Super App</title>
+<link rel="stylesheet" href="/static/css/design.css" />
+<link rel="stylesheet" href="/static/css/components.css" />
 <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -172,6 +174,12 @@
         </div>
     </div>
 
+
+    <div class="card full" style="margin-bottom:24px;">
+        <h2>Retention jobs</h2>
+        <div id="retention-info" class="kv" style="margin-bottom:12px;"></div>
+        <button onclick="runRetentionNow()">Run now</button>
+    </div>
     <div class="card" style="border-left:3px solid #7f1d1d;">
         <h2>Danger zone</h2>
         <p style="color:#94a3b8;font-size:.85rem;margin-bottom:12px;">
@@ -364,11 +372,43 @@ async function clearAudit() {
     }
 }
 
+
+async function loadRetention() {
+    try {
+        const data = await api("/api/admin/retention");
+        const el = document.getElementById("retention-info");
+        const ttls = data.ttls || {};
+        const deleted = data.last_deleted || {};
+        const delStr = Object.entries(deleted).map(([k, v]) => `${k}: ${v}`).join(", ") || "—";
+        el.innerHTML = `
+            <div class="k">Enabled</div><div class="v">${data.enabled ? "yes" : "no"}</div>
+            <div class="k">Last run</div><div class="v">${data.last_run || "never"}</div>
+            <div class="k">Duration</div><div class="v">${data.last_duration_ms || 0} ms</div>
+            <div class="k">Total runs</div><div class="v">${data.total_runs || 0}</div>
+            <div class="k">Last deleted</div><div class="v">${delStr}</div>
+            <div class="k">Calc TTL</div><div class="v">${ttls.calculations_days || 0} days</div>
+            <div class="k">Chat TTL</div><div class="v">${ttls.chat_days || 0} days</div>
+            <div class="k">Audit TTL</div><div class="v">${ttls.audit_days || 0} days</div>
+            <div class="k">Device TTL</div><div class="v">${ttls.device_days || 0} days</div>
+        `;
+    } catch (e) {
+        document.getElementById("retention-info").innerHTML = `<div class="v">Error: ${e.message}</div>`;
+    }
+}
+async function runRetentionNow() {
+    try {
+        const r = await api("/api/admin/retention/run", { method: "POST" });
+        toast("Retention: " + JSON.stringify(r.deleted));
+        loadRetention();
+        loadStats();
+    } catch (e) { toast("Error: " + e.message); }
+}
+
 async function refreshAll() {
     try {
         await Promise.all([
             loadStats(), loadServer(), loadMetrics(),
-            loadUsers(), loadRooms(), loadAudit(),
+            loadUsers(), loadRooms(), loadAudit(), loadRetention(),
         ]);
     } catch (e) {
         toast("Error: " + e.message);

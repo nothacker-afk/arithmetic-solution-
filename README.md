@@ -191,3 +191,47 @@ The `@trace("name")` decorator wraps any function:
     @trace("arithmetic.add")
     def add(a, b):
         return a + b
+
+## Full-Text Search
+
+    GET /api/search?q=<query>&scope=all|calculations|chat&limit=20
+
+Uses SQLite FTS5 with `bm25` ranking when available, else falls back
+to LIKE. The response includes an `engine` field so clients know which
+backend served the query.
+
+## Component Gallery
+
+Visit `/gallery` for a live, self-contained visual reference of every
+UI primitive: buttons, forms, tabs, cards, toasts, modals, badges,
+chat lines, feed items, skeletons, and empty states.
+
+## Offline-First UI
+
+The frontend caches recent calculations in IndexedDB and queues
+non-GET requests when the connection drops. A badge in the header
+shows pending count. On reconnect, the queue is flushed automatically.
+
+No configuration required — it activates on the first load.
+
+## Presence Avatars
+
+Every room shows colored initial avatars for the people present.
+Colors are deterministic per username (same algorithm client + server).
+
+## Encrypted DMs
+
+User-to-user direct messages with end-to-end encryption.
+
+    POST   /api/dms/threads                    {username}     start a thread
+    GET    /api/dms/threads                                   list threads
+    GET    /api/dms/threads/<id>?limit=50                     messages
+    POST   /api/dms/threads/<id>               {body, encrypted}
+    DELETE /api/dms/threads/<id>                              delete thread
+
+**E2E design**: sender and recipient exchange a shared passphrase
+out-of-band. The key is derived client-side via
+PBKDF2(SHA-256, 100k) over `passphrase + sorted(usernames)`. The
+server stores only ciphertext.
+
+Best-effort push notification on new messages (Phase 19 FCM).
