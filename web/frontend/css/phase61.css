@@ -1,0 +1,54 @@
+/* Phases 61-66 additions */
+
+.emoji-tile {
+    font-size: 1.6em;
+    padding: 6px;
+    background: var(--bg-0);
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    min-height: 36px;
+}
+
+.guest-token-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    margin-bottom: 4px;
+    background: var(--bg-0);
+    font-size: var(--fs-sm);
+}
+.guest-token-row .label { font-weight: 600; }
+.guest-token-row .meta { color: var(--fg-3); font-size: var(--fs-xs); }
+.guest-token-row.expired { opacity: 0.5; }
+
+.archive-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    margin-bottom: 4px;
+    background: var(--bg-0);
+    font-size: var(--fs-sm);
+}
+
+/* SSE status indicator */
+.sse-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: var(--fs-xs);
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+}
+.sse-status.active { border-color: var(--accent); color: var(--accent); }

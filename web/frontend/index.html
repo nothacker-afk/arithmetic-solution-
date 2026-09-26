@@ -14,6 +14,7 @@
 <link rel="stylesheet" href="/static/css/phase46.css" />
 <link rel="stylesheet" href="/static/css/phase51.css" />
 <link rel="stylesheet" href="/static/css/phase56.css" />
+<link rel="stylesheet" href="/static/css/phase61.css" />
 <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 <script src="/static/crypto.js"></script>
 <script src="/static/i18n.js"></script>
@@ -261,6 +262,29 @@
                 <div id="room-pins-list"></div>
             </div>
 
+
+            <div class="room-section">
+                <h3>🎨 Emoji packs <button id="emoji-packs-new" class="btn">+ New pack</button>
+                    <button id="emoji-packs-refresh" class="btn">↻</button></h3>
+                <div id="emoji-packs-list"></div>
+            </div>
+
+            <div class="room-section">
+                <h3>🔗 Guest links <button id="guest-link-create" class="btn">+ Create</button></h3>
+                <p class="muted" style="font-size:var(--fs-sm);">
+                    Share a link that lets guests join without an account.
+                    Guests get read-only access unless you enable write.
+                </p>
+            </div>
+
+            <div class="room-section">
+                <h3>📦 Archives</h3>
+                <p class="muted" style="font-size:var(--fs-sm);">
+                    Download a static snapshot of the room as a ZIP.
+                </p>
+                <button id="archive-create" class="btn btn-primary">Download archive</button>
+                <div id="archive-list" class="mt-2"></div>
+            </div>
             <div class="room-section">
                 <h3>📖 Wiki <button id="room-wiki-new" class="btn">+ New page</button></h3>
                 <div id="room-wiki-list"></div>
@@ -329,6 +353,9 @@
 <script src="/static/js/status.js"></script>
 <script src="/static/js/tabs/groups.js"></script>
 <script src="/static/js/hotkeys.js"></script>
+<script src="/static/js/sse_client.js"></script>
+<script src="/static/js/tabs/emoji.js"></script>
+<script src="/static/js/tabs/guest_links.js"></script>
 <script src="/static/js/app.js"></script>
 </body>
 </html>

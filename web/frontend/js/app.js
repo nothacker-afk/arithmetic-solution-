@@ -16,6 +16,7 @@ const Tab = (() => {
         if (name === "dms" && window.DMs) DMs.onShow();
         if (name === "groups" && window.Groups) Groups.onShow();
         if (name === "room" && window.RoomTab) RoomTab.onShow();
+        if (name === "room" && window.EmojiPacks) EmojiPacks.onShow();
         if (name === "discover" && window.Discover) Discover.onShow();
         if (name === "contacts" && window.Contacts) Contacts.onShow();
         if (name === "bots" && window.Bots) Bots.onShow();
@@ -175,10 +176,13 @@ document.addEventListener("DOMContentLoaded", () => {
     if (window.Scheduled) Scheduled.init();
     if (window.RoomTab) RoomTab.init();
     if (window.Status) Status.init();
+    if (window.EmojiPacks) EmojiPacks.init();
+    if (window.GuestLinks) GuestLinks.init();
     if (window.Groups) Groups.init();
     if (window.DMs) DMs.init();
     if (window.Live) Live.init();
     if (window.PWA) PWA.init();
+    if (window.SSEClient) SSEClient.installFallback();
     document.getElementById("hotkeys-help")?.addEventListener("click", () => {
         if (window.Hotkeys) Hotkeys.show();
     });

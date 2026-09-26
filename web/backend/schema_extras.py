@@ -256,9 +256,72 @@ EXTRA_TABLES = [
         config TEXT
     )
     """,
+    # --- Phase 61 — custom emoji packs ---
+    """
+    CREATE TABLE IF NOT EXISTS emoji_packs (
+        id TEXT PRIMARY KEY,
+        room_id TEXT,
+        name TEXT NOT NULL,
+        created_by INTEGER,
+        is_public INTEGER NOT NULL DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_emoji_packs_room ON emoji_packs(room_id, is_public)",
+
+    """
+    CREATE TABLE IF NOT EXISTS emoji_pack_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        pack_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        emoji TEXT,
+        image_url TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE (pack_id, name),
+        FOREIGN KEY (pack_id) REFERENCES emoji_packs(id) ON DELETE CASCADE
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_emoji_items_pack ON emoji_pack_items(pack_id)",
+
+    # --- Phase 65 — guest access tokens ---
+    """
+    CREATE TABLE IF NOT EXISTS guest_access_tokens (
+        token TEXT PRIMARY KEY,
+        room_id TEXT NOT NULL,
+        created_by INTEGER,
+        label TEXT,
+        expires_at TIMESTAMP,
+        uses_remaining INTEGER,
+        use_count INTEGER NOT NULL DEFAULT 0,
+        allow_write INTEGER NOT NULL DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_guest_tokens_room ON guest_access_tokens(room_id)",
+
+    # --- Phase 66 — room archives ---
+    """
+    CREATE TABLE IF NOT EXISTS room_archives (
+        id TEXT PRIMARY KEY,
+        room_id TEXT NOT NULL,
+        created_by INTEGER,
+        size_bytes INTEGER NOT NULL DEFAULT 0,
+        message_count INTEGER NOT NULL DEFAULT 0,
+        wiki_count INTEGER NOT NULL DEFAULT 0,
+        file_count INTEGER NOT NULL DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_archives_room ON room_archives(room_id, created_at DESC)",
 ]
 
 EXTRA_COLUMNS = {
+    "group_messages": [
+        ("parent_id", "INTEGER"),
+    ],
     "rooms": [
         ("description", "TEXT"),
         ("tags", "TEXT"),

@@ -298,12 +298,42 @@ const RoomTab = (() => {
             ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
     }
 
+
+    async function downloadArchive() {
+        const room = _room();
+        if (!room) { UI.toast("Enter a room name first", "warning"); return; }
+        if (!API.isLoggedIn()) { UI.toast("Login first", "warning"); return; }
+        try {
+            const res = await fetch(`${API.base}/api/rooms/${room}/archive`, {
+                method: "POST",
+                headers: { "Authorization": "Bearer " + API.token },
+            });
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.error || "HTTP " + res.status);
+            }
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `room-${room}.zip`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 2000);
+            UI.toast("Archive downloaded", "success");
+        } catch (e) {
+            UI.toast("Archive failed: " + e.message, "error");
+        }
+    }
+
     function init() {
         document.getElementById("room-refresh")?.addEventListener("click", refreshAll);
         document.getElementById("room-wiki-new")?.addEventListener("click", newWikiPage);
         document.getElementById("room-event-new")?.addEventListener("click", newEvent);
         document.getElementById("room-vc-leave")?.addEventListener("click", vcLeave);
         document.getElementById("room-vc-mute")?.addEventListener("click", vcToggleMute);
+        document.getElementById("archive-create")?.addEventListener("click", downloadArchive);
     }
 
     function refreshAll() {
@@ -313,7 +343,7 @@ const RoomTab = (() => {
 
     function onShow() { refreshAll(); }
 
-    return { init, onShow, refreshAll,
+    return { init, onShow, refreshAll, downloadArchive,
              loadPins, loadWiki, loadEvents, loadVC,
              unpin, pinFromMessage, openWiki, rsvp, vcJoin, vcLeave, vcToggleMute };
 })();

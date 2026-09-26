@@ -21,7 +21,7 @@ const I18n = (() => {
     function current() { return _locale; }
 
     function cycle() {
-        const list = ["en", "sw", "fr", "es"];
+        const list = ["en", "sw", "fr", "es", "ru", "zh", "hi"];
         const next = list[(list.indexOf(_locale) + 1) % list.length];
         return load(next);
     }

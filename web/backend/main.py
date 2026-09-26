@@ -35,6 +35,11 @@ from .media import media_bp
 from .reads import reads_bp
 from .status import status_bp
 from .analytics import analytics_bp
+from .archive import archive_bp
+from .guest_access import guest_bp
+from .sse import sse_bp, install_bridge as _install_sse_bridge
+from .group_threads import grp_threads_bp
+from .emoji_packs import emoji_bp
 from .room_templates import templates_bp, apply_bp
 from .groups import groups_bp
 from .events import events_bp
@@ -92,6 +97,11 @@ app.register_blueprint(media_bp)
 app.register_blueprint(reads_bp)
 app.register_blueprint(status_bp)
 app.register_blueprint(analytics_bp)
+app.register_blueprint(archive_bp)
+app.register_blueprint(guest_bp)
+app.register_blueprint(sse_bp)
+app.register_blueprint(grp_threads_bp)
+app.register_blueprint(emoji_bp)
 app.register_blueprint(apply_bp)
 app.register_blueprint(templates_bp)
 app.register_blueprint(groups_bp)
