@@ -1,8 +1,7 @@
-"""Background retention jobs (Phase 24).
+"""Background retention jobs (Phase 24 + Phase 39).
 
-Purges old rows based on configurable TTLs. Exposed via admin endpoints
-so the dashboard can show last-run stats. No scheduler required — a
-thread is started on app boot when RETENTION_ENABLED=1.
+Purges old rows based on configurable TTLs, plus expired disappearing
+messages. Runs in a background thread when RETENTION_ENABLED=1.
 """
 import os
 import threading
@@ -14,7 +13,6 @@ from .logging_config import get_logger
 
 log = get_logger("web.jobs")
 
-# In-memory last-run stats (not persisted; reset on restart)
 STATS = {
     "last_run": None,
     "last_duration_ms": None,
@@ -34,42 +32,67 @@ def _ttl(name: str, default_days: int) -> int:
 
 
 def run_retention() -> dict:
-    """Run all retention jobs. Returns a dict of deleted counts."""
+    """Run every retention job. Returns dict of deletion counts."""
     now = datetime.now(timezone.utc)
     deleted = {}
 
-    # 1. Old calculations
-    days = _ttl("RETENTION_CALC_DAYS", 0)  # 0 = keep forever
+    # 1. Expired disappearing chat messages (Phase 39)
+    now_iso = now.isoformat(timespec="seconds")
+    try:
+        with get_db() as conn:
+            cur = conn.execute(
+                "DELETE FROM chat_messages "
+                "WHERE expires_at IS NOT NULL AND expires_at < ?",
+                (now_iso,),
+            )
+            if cur.rowcount:
+                deleted["expired_chat"] = cur.rowcount
+
+            cur = conn.execute(
+                "DELETE FROM dm_messages "
+                "WHERE expires_at IS NOT NULL AND expires_at < ?",
+                (now_iso,),
+            )
+            if cur.rowcount:
+                deleted["expired_dm"] = cur.rowcount
+    except Exception as e:
+        log.warning("expired-message purge failed: %s", e)
+
+    # 2. Old calculations
+    days = _ttl("RETENTION_CALC_DAYS", 0)
     if days > 0:
         cutoff = (now - timedelta(days=days)).isoformat()
         with get_db() as conn:
             cur = conn.execute("DELETE FROM calculations WHERE created_at < ?", (cutoff,))
-            deleted["calculations"] = cur.rowcount
+            if cur.rowcount:
+                deleted["calculations"] = cur.rowcount
 
-    # 2. Old chat messages
+    # 3. Old chat messages
     days = _ttl("RETENTION_CHAT_DAYS", 0)
     if days > 0:
         cutoff = (now - timedelta(days=days)).isoformat()
         with get_db() as conn:
             cur = conn.execute("DELETE FROM chat_messages WHERE created_at < ?", (cutoff,))
-            deleted["chat_messages"] = cur.rowcount
+            if cur.rowcount:
+                deleted["chat_messages"] = cur.rowcount
 
-    # 3. Old audit entries
+    # 4. Old audit entries
     days = _ttl("RETENTION_AUDIT_DAYS", 0)
     if days > 0:
         cutoff = (now - timedelta(days=days)).isoformat()
         with get_db() as conn:
             cur = conn.execute("DELETE FROM audit_log WHERE created_at < ?", (cutoff,))
-            deleted["audit_log"] = cur.rowcount
+            if cur.rowcount:
+                deleted["audit_log"] = cur.rowcount
 
-    # 4. Expired room invites
-    now_iso = now.isoformat()
+    # 5. Expired room invites
     with get_db() as conn:
-        cur = conn.execute("DELETE FROM room_invites WHERE expires_at < ?", (now_iso,))
+        cur = conn.execute("DELETE FROM room_invites WHERE expires_at < ?",
+                           (now.isoformat(),))
         if cur.rowcount:
             deleted["room_invites"] = cur.rowcount
 
-    # 5. Old device tokens (FCM tokens expire after ~270 days of inactivity)
+    # 6. Old device tokens
     days = _ttl("RETENTION_DEVICE_DAYS", 270)
     if days > 0:
         cutoff = (now - timedelta(days=days)).isoformat()
@@ -78,11 +101,9 @@ def run_retention() -> dict:
             if cur.rowcount:
                 deleted["device_tokens"] = cur.rowcount
 
-    # Update stats
     STATS["last_run"] = now.isoformat(timespec="seconds") + "Z"
     STATS["last_deleted"] = deleted
     STATS["total_runs"] += 1
-
     return deleted
 
 
@@ -102,19 +123,16 @@ def _loop(interval_seconds: int) -> None:
 
 
 def start_if_enabled() -> bool:
-    """Start the background retention thread if RETENTION_ENABLED=1."""
     global _thread
     if os.environ.get("RETENTION_ENABLED", "").lower() not in ("1", "true", "yes", "on"):
         return False
     if _thread and _thread.is_alive():
         return True
-
     try:
         hours = int(os.environ.get("RETENTION_INTERVAL_HOURS", "24"))
     except ValueError:
         hours = 24
     interval = max(60, hours * 3600)
-
     _stop.clear()
     _thread = threading.Thread(target=_loop, args=(interval,), daemon=True)
     _thread.start()
@@ -122,12 +140,10 @@ def start_if_enabled() -> bool:
 
 
 def stop() -> None:
-    """Signal the retention thread to stop (for tests)."""
     _stop.set()
 
 
 def snapshot() -> dict:
-    """Return a copy of the current stats (safe to call from admin)."""
     return {
         "last_run": STATS["last_run"],
         "last_duration_ms": STATS["last_duration_ms"],

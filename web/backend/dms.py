@@ -1,11 +1,17 @@
-"""Encrypted user-to-user direct messages (Phase 30).
+"""Encrypted user-to-user direct messages.
 
-End-to-end: the server stores ciphertext only. Users must exchange a
-DM passphrase out-of-band. The key is derived client-side via
-PBKDF2(SHA-256, 100k) over (passphrase + sorted usernames).
+Endpoints:
+    GET    /api/dms/threads                                    list my threads
+    POST   /api/dms/threads                    {username}      start/fetch thread
+    GET    /api/dms/threads/<id>?limit=50                      messages
+    POST   /api/dms/threads/<id>               {body,encrypted,kind,attachment_id}
+    DELETE /api/dms/threads/<id>                               delete thread
+    PATCH  /api/dms/threads/<id>/messages/<mid>  {body}        edit
+    DELETE /api/dms/threads/<id>/messages/<mid>                soft-delete
+    GET    /api/dms/threads/<id>/messages/<mid>/edits          edit history
+    GET    /api/dms/threads/<id>/ttl                           get TTL
+    PUT    /api/dms/threads/<id>/ttl              {ttl_seconds} set TTL
 """
-import base64
-import re
 from flask import Blueprint, request, jsonify, g
 
 from .auth import require_auth
@@ -19,30 +25,41 @@ MAX_BODY_BYTES = 8192
 MAX_PREVIEW = 80
 
 
+def _row_to_dict(row):
+    d = dict(row)
+    d.setdefault("kind", "text")
+    d.setdefault("attachment_id", None)
+    d.setdefault("edited_at", None)
+    d.setdefault("deleted", 0)
+    d.setdefault("expires_at", None)
+    d.setdefault("read_at", None)
+    return d
+
+
+def _thread_ttl_seconds(conn, thread_id):
+    row = conn.execute(
+        "SELECT ttl_seconds FROM thread_ttls WHERE thread_id = ?", (thread_id,)
+    ).fetchone()
+    return int(row["ttl_seconds"]) if row else 0
+
+
 def _find_user(conn, username):
     return conn.execute(
-        "SELECT id, username FROM users WHERE username = ?", (username,),
+        "SELECT id, username FROM users WHERE username = ?", (username,)
     ).fetchone()
 
 
 def _get_or_create_thread(conn, uid_a, uid_b):
-    """Get or create a thread with normalized ordering (smaller id first)."""
     a, b = sorted([uid_a, uid_b])
     row = conn.execute(
         "SELECT id FROM dm_threads WHERE user_a = ? AND user_b = ?", (a, b),
     ).fetchone()
     if row:
-        return row["id"], False
+        return row["id"]
     cur = conn.execute(
         "INSERT INTO dm_threads (user_a, user_b) VALUES (?, ?)", (a, b),
     )
-    return cur.lastrowid, True
-
-
-def _user_summary(uid):
-    with get_db() as conn:
-        u = conn.execute("SELECT id, username FROM users WHERE id = ?", (uid,)).fetchone()
-    return dict(u) if u else None
+    return cur.lastrowid
 
 
 # ---------------------------------------------------------------------
@@ -77,7 +94,7 @@ def list_threads():
 
 
 # ---------------------------------------------------------------------
-# Start or fetch a thread with a specific user
+# Start or fetch a thread
 # ---------------------------------------------------------------------
 @dms_bp.route("/threads", methods=["POST"])
 @require_auth
@@ -87,17 +104,16 @@ def start_thread():
     username = (data.get("username") or "").strip()
     if not username:
         return jsonify({"error": "username is required"}), 400
-    if username == g.username if hasattr(g, "username") else False:
-        return jsonify({"error": "Cannot DM yourself"}), 400
 
     with get_db() as conn:
-        me = conn.execute("SELECT username FROM users WHERE id = ?", (g.user_id,)).fetchone()
+        me = conn.execute("SELECT username FROM users WHERE id = ?",
+                          (g.user_id,)).fetchone()
         if me and me["username"] == username:
             return jsonify({"error": "Cannot DM yourself"}), 400
         other = _find_user(conn, username)
         if not other:
             return jsonify({"error": "User not found"}), 404
-        thread_id, _ = _get_or_create_thread(conn, g.user_id, other["id"])
+        thread_id = _get_or_create_thread(conn, g.user_id, other["id"])
     return jsonify({"thread_id": thread_id, "other_username": username}), 201
 
 
@@ -128,15 +144,13 @@ def list_messages(thread_id):
         )
 
         rows = conn.execute("""
-            SELECT m.id, m.sender_id, m.body, m.encrypted, m.read_at, m.created_at,
-                   u.username AS sender
-            FROM dm_messages m
-            JOIN users u ON u.id = m.sender_id
-            WHERE m.thread_id = ?
-            ORDER BY m.id DESC LIMIT ?
+            SELECT m.id, m.sender_id, m.body, m.encrypted, m.kind,
+                   m.attachment_id, m.edited_at, m.deleted, m.expires_at,
+                   m.read_at, m.created_at, u.username AS sender
+            FROM dm_messages m JOIN users u ON u.id = m.sender_id
+            WHERE m.thread_id = ? ORDER BY m.id DESC LIMIT ?
         """, (thread_id, limit)).fetchall()
 
-        # Get other participant for key derivation
         other_id = t["user_b"] if t["user_a"] == g.user_id else t["user_a"]
         other = conn.execute("SELECT username FROM users WHERE id = ?",
                              (other_id,)).fetchone()
@@ -145,11 +159,12 @@ def list_messages(thread_id):
 
     return jsonify({
         "thread_id": thread_id,
-        "messages": [dict(r) for r in reversed(rows)],
+        "messages": [_row_to_dict(r) for r in reversed(rows)],
         "participants": {
             "me": me["username"] if me else "",
             "other": other["username"] if other else "",
         },
+        "other_user_id": other_id,
     })
 
 
@@ -163,11 +178,15 @@ def send_message(thread_id):
     data = request.get_json(silent=True) or {}
     body = data.get("body") or ""
     encrypted = bool(data.get("encrypted", True))
+    kind = (data.get("kind") or "text").strip()[:16]
+    attachment_id = data.get("attachment_id")
 
-    if not isinstance(body, str) or not body.strip():
-        return jsonify({"error": "body required"}), 400
+    if not isinstance(body, str):
+        return jsonify({"error": "body must be a string"}), 400
     if len(body.encode("utf-8")) > MAX_BODY_BYTES:
         return jsonify({"error": "Message too long"}), 400
+    if kind == "text" and not body.strip():
+        return jsonify({"error": "body required"}), 400
 
     with get_db() as conn:
         t = conn.execute("SELECT user_a, user_b FROM dm_threads WHERE id = ?",
@@ -178,15 +197,14 @@ def send_message(thread_id):
             return jsonify({"error": "Not a participant"}), 403
 
         ttl = _thread_ttl_seconds(conn, thread_id)
+
         cur = conn.execute(
-            "INSERT INTO dm_messages (thread_id, sender_id, body, encrypted, kind, "
-            "                          attachment_id, expires_at) "
+            "INSERT INTO dm_messages "
+            "(thread_id, sender_id, body, encrypted, kind, attachment_id, expires_at) "
             "VALUES (?, ?, ?, ?, ?, ?, "
             "  CASE WHEN ? > 0 THEN datetime('now', '+' || ? || ' seconds') ELSE NULL END)",
             (thread_id, g.user_id, body, 1 if encrypted else 0,
-             (data.get("kind") or "text"),
-             data.get("attachment_id"),
-             ttl, ttl),
+             kind, attachment_id, ttl, ttl),
         )
         msg_id = cur.lastrowid
 
@@ -196,13 +214,13 @@ def send_message(thread_id):
         )
 
         row = conn.execute("""
-            SELECT m.id, m.sender_id, m.body, m.encrypted, m.created_at,
-                   u.username AS sender
+            SELECT m.id, m.sender_id, m.body, m.encrypted, m.kind,
+                   m.attachment_id, m.edited_at, m.deleted, m.expires_at,
+                   m.read_at, m.created_at, u.username AS sender
             FROM dm_messages m JOIN users u ON u.id = m.sender_id
             WHERE m.id = ?
         """, (msg_id,)).fetchone()
 
-        # Get other user for potential push
         other_id = t["user_b"] if t["user_a"] == g.user_id else t["user_a"]
         me = conn.execute("SELECT username FROM users WHERE id = ?",
                           (g.user_id,)).fetchone()
@@ -210,7 +228,6 @@ def send_message(thread_id):
     log_event("dm.send", actor_id=g.user_id, resource="thread",
               resource_id=str(thread_id))
 
-    # Best-effort push notification
     try:
         from .notifications import send_push
         preview = "[encrypted]" if encrypted else body[:MAX_PREVIEW]
@@ -223,11 +240,11 @@ def send_message(thread_id):
     except Exception:
         pass
 
-    return jsonify(dict(row)), 201
+    return jsonify(_row_to_dict(row)), 201
 
 
 # ---------------------------------------------------------------------
-# Delete a thread (removes it for both users)
+# Delete thread
 # ---------------------------------------------------------------------
 @dms_bp.route("/threads/<int:thread_id>", methods=["DELETE"])
 @require_auth
@@ -244,6 +261,9 @@ def delete_thread(thread_id):
     return jsonify({"deleted": thread_id})
 
 
+# ---------------------------------------------------------------------
+# Edit message
+# ---------------------------------------------------------------------
 @dms_bp.route("/threads/<int:thread_id>/messages/<int:msg_id>", methods=["PATCH"])
 @require_auth
 def edit_dm(thread_id, msg_id):
@@ -282,14 +302,16 @@ def edit_dm(thread_id, msg_id):
         )
         updated = conn.execute(
             "SELECT id, sender_id, body, encrypted, kind, attachment_id, "
-            "       edited_at, deleted, expires_at, created_at "
-            "FROM dm_messages WHERE id = ?",
-            (msg_id,),
+            "       edited_at, deleted, expires_at, read_at, created_at "
+            "FROM dm_messages WHERE id = ?", (msg_id,),
         ).fetchone()
 
-    return jsonify(dict(updated))
+    return jsonify(_row_to_dict(updated))
 
 
+# ---------------------------------------------------------------------
+# Soft-delete message
+# ---------------------------------------------------------------------
 @dms_bp.route("/threads/<int:thread_id>/messages/<int:msg_id>", methods=["DELETE"])
 @require_auth
 def delete_dm(thread_id, msg_id):
@@ -319,6 +341,9 @@ def delete_dm(thread_id, msg_id):
     return jsonify({"deleted": msg_id, "tombstone": True})
 
 
+# ---------------------------------------------------------------------
+# Edit history
+# ---------------------------------------------------------------------
 @dms_bp.route("/threads/<int:thread_id>/messages/<int:msg_id>/edits", methods=["GET"])
 @require_auth
 def get_dm_edits(thread_id, msg_id):
@@ -336,15 +361,8 @@ def get_dm_edits(thread_id, msg_id):
 
 
 # ---------------------------------------------------------------------
-# Disappearing messages for DMs (Phase 39)
+# Thread TTL
 # ---------------------------------------------------------------------
-def _thread_ttl_seconds(conn, thread_id):
-    row = conn.execute(
-        "SELECT ttl_seconds FROM thread_ttls WHERE thread_id = ?", (thread_id,),
-    ).fetchone()
-    return int(row["ttl_seconds"]) if row else 0
-
-
 @dms_bp.route("/threads/<int:thread_id>/ttl", methods=["GET"])
 @require_auth
 def get_thread_ttl(thread_id):
