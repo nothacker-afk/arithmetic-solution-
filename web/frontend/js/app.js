@@ -150,6 +150,7 @@ document.addEventListener("DOMContentLoaded", () => {
     Tab.init();
     Auth.init();
     Commands.init();
+    if (window.EmojiAutocomplete) EmojiAutocomplete.init();
     if (window.Offline) Offline.init();
     if (window.History) History.init();
     if (window.Basic) Basic.init();

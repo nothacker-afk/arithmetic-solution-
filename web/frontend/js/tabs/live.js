@@ -2,38 +2,153 @@ const Live = (() => {
     let socket = null;
     let currentRoom = null;
     let cryptoKey = null;
+    const messagesById = {};
 
     function status(msg) {
         const el = document.getElementById("rt-status");
         if (el) el.textContent = msg;
     }
 
-    function addChat(msg) {
-        const log = document.getElementById("rt-chat-log");
-        if (!log) return;
-        const line = document.createElement("div");
-        line.className = "chat-line" + (msg.username === "system" ? " system" : "");
-        const who = msg.username === "system" ? "" : `<strong>${msg.username}</strong>: `;
-        const lock = msg.encrypted ? "🔒 " : "";
-        line.innerHTML = who + lock + (msg.decrypted || msg.body || "");
-        log.appendChild(line);
-        log.scrollTop = log.scrollHeight;
-        while (log.children.length > 100) log.removeChild(log.firstChild);
+    function esc(s) { return (s ?? "").toString().replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+
+    function msgElement(msg) {
+        const wrap = document.createElement("div");
+        wrap.className = "msg-wrap";
+        wrap.dataset.mid = msg.id;
+        wrap.innerHTML = `
+            <div class="msg-head"><strong>${esc(msg.username)}</strong></div>
+            <div class="msg-body"></div>
+            <div class="reaction-chips"></div>
+            <div class="reaction-picker"></div>
+            <div class="thread-slot"></div>`;
+        const body = wrap.querySelector(".msg-body");
+        applyBody(body, msg);
+        // Reactions
+        if (window.Reactions) {
+            Reactions.renderPicker("chat", msg.id, wrap.querySelector(".reaction-picker"));
+            Reactions.renderChips("chat", msg.id, wrap.querySelector(".reaction-chips"));
+        }
+        // Thread toggle (only top-level)
+        if (window.Threads && !msg.parent_id) {
+            Threads.renderThreadToggle(
+                wrap.querySelector(".thread-slot"),
+                currentRoom,
+                msg.id,
+                msg.reply_count || 0,
+            );
+        }
+        // Message actions menu (Phase 38)
+        if (window.MessageActions) {
+            const me = (document.getElementById("rt-user")?.value || "").trim();
+            const isMine = (msg.username === me);
+            MessageActions.attachDots(wrap, {
+                canEdit: isMine && !msg.deleted,
+                canDelete: isMine && !msg.deleted,
+                onEdit: async () => {
+                    const newText = prompt("Edit message:", msg.body);
+                    if (!newText || newText === msg.body) return;
+                    try {
+                        const updated = await API.request(
+                            `/api/chat/${currentRoom}/${msg.id}`,
+                            { method: "PATCH", body: { body: newText, username: msg.username } });
+                        msg.body = updated.body;
+                        msg.edited_at = updated.edited_at;
+                        bodyEl.textContent = newText + "  (edited)";
+                    } catch (e) { UI.toast("Edit failed: " + e.message, "error"); }
+                },
+                onDelete: async () => {
+                    if (!confirm("Delete this message?")) return;
+                    try {
+                        await API.request(
+                            `/api/chat/${currentRoom}/${msg.id}?username=${encodeURIComponent(msg.username)}`,
+                            { method: "DELETE" });
+                        bodyEl.textContent = "(deleted)";
+                        bodyEl.classList.add("deleted");
+                    } catch (e) { UI.toast("Delete failed: " + e.message, "error"); }
+                },
+                onViewEdits: () => {
+                    MessageActions.showEditHistory(`/api/chat/${currentRoom}/${msg.id}/edits`);
+                },
+            });
+        }
+        return wrap;
     }
 
-    function setUsers(users) {
-        users = users || [];
-        // Presence avatars
-        if (window.Presence && Presence.renderStrip) {
-            Presence.renderStrip("rt-avatars", users);
+    async function applyBody(bodyEl, msg) {
+        if (msg.kind === "voice" && msg.attachment_id) {
+            bodyEl.innerHTML = `
+                <div class="voice-player">
+                    <audio controls preload="none"></audio>
+                    <span class="voice-dur">${msg.duration_ms ? (msg.duration_ms/1000).toFixed(1) + "s" : ""}</span>
+                    <button class="transcribe-btn" title="Transcribe">📝</button>
+                </div>
+                <div class="transcript"></div>`;
+            const trBtn = bodyEl.querySelector(".transcribe-btn");
+            const trBox = bodyEl.querySelector(".transcript");
+            trBtn.addEventListener("click", async () => {
+                trBox.textContent = "Transcribing…";
+                try {
+                    // If clip is encrypted locally, we need to send plaintext
+                    const res = await fetch(`${API.base}/api/voice/${msg.attachment_id}`);
+                    const buf = await res.arrayBuffer();
+                    let audioBytes;
+                    if (msg.encrypted && cryptoKey) {
+                        const b64 = btoa(String.fromCharCode(...new Uint8Array(buf)));
+                        audioBytes = await decryptBytes(cryptoKey, b64);
+                    } else {
+                        audioBytes = new Uint8Array(buf);
+                    }
+                    let bin = "";
+                    for (const b of audioBytes) bin += String.fromCharCode(b);
+                    const audio_b64 = btoa(bin);
+                    const out = await API.post("/api/transcribe/upload", {
+                        audio_b64, mime: "audio/webm",
+                    });
+                    trBox.textContent = out.text || "(empty transcript)";
+                } catch (e) {
+                    trBox.textContent = "⚠ " + e.message;
+                }
+            });
+            const audio = bodyEl.querySelector("audio");
+            bodyEl.querySelector(".voice-player").addEventListener("click", async (e) => {
+                if (e.target.tagName === "AUDIO") return;
+                try {
+                    await VoiceRecorder.loadAndPlay(msg.attachment_id, !!msg.encrypted, cryptoKey, audio);
+                } catch (err) { UI.toast("Play failed: " + err.message, "error"); }
+            }, { once: true });
+            if (!msg.encrypted) {
+                try { await VoiceRecorder.loadAndPlay(msg.attachment_id, false, null, audio); }
+                catch {}
+            }
+        } else if (msg.encrypted) {
+            const key = cryptoKey || await ensureKey();
+            if (key) {
+                try { bodyEl.textContent = await decrypt(key, msg.body); }
+                catch { bodyEl.textContent = "🔒 [decrypt failed]"; }
+            } else {
+                bodyEl.textContent = "🔒 [encrypted — enter passphrase]";
+            }
         } else {
-            // Fallback to plain text
-            const el = document.getElementById("rt-avatars");
-            if (el) el.textContent = users.length ? "In room: " + users.join(", ") : "";
+            bodyEl.textContent = msg.body;
         }
-        // Legacy rt-users element (kept blank if present)
-        const legacy = document.getElementById("rt-users");
-        if (legacy) legacy.textContent = "";
+    }
+
+    function appendMessage(msg) {
+        const log = document.getElementById("rt-chat-log");
+        if (!log || messagesById[msg.id]) return;
+        messagesById[msg.id] = msg;
+        log.appendChild(msgElement(msg));
+        log.scrollTop = log.scrollHeight;
+        while (log.children.length > 100) {
+            const first = log.firstChild;
+            if (first.dataset && first.dataset.mid) delete messagesById[first.dataset.mid];
+            log.removeChild(first);
+        }
+    }
+
+    async function setUsers(users) {
+        users = users || [];
+        if (window.Presence) Presence.renderStrip("rt-avatars", users);
     }
 
     function ensureSocket() {
@@ -46,27 +161,10 @@ const Live = (() => {
             status("Joined: " + d.room);
             setUsers(d.users);
             loadHistory();
-            refreshFiles();
         });
-        socket.on("user_joined", (d) => {
-            addChat({ username: "system", body: (d.username || "user") + " joined" });
-            setUsers(d.users);
-        });
-        socket.on("user_left", (d) => {
-            addChat({ username: "system", body: (d.username || "user") + " left" });
-            setUsers(d.users);
-        });
-        socket.on("chat_message", async (d) => {
-            if (d.encrypted) {
-                const key = await ensureKey();
-                if (!key) return addChat({ username: d.username, body: "[encrypted]", encrypted: true });
-                try {
-                    addChat({ username: d.username, body: await decrypt(key, d.body), encrypted: true });
-                } catch {
-                    addChat({ username: d.username, body: "[decrypt failed]", encrypted: true });
-                }
-            } else addChat(d);
-        });
+        socket.on("user_joined", (d) => { setUsers(d.users); });
+        socket.on("user_left", (d) => { setUsers(d.users); });
+        socket.on("chat_message", (d) => { appendMessage(d); });
         socket.on("typing", (d) => {
             const el = document.getElementById("rt-typing");
             if (el) el.textContent = d.state === "start" ? d.username + " is typing…" : "";
@@ -76,7 +174,7 @@ const Live = (() => {
             if (!feed) return;
             const item = document.createElement("div");
             item.className = "feed-item";
-            item.innerHTML = `<strong>${d.username}</strong>: ${d.expression} = ${d.result}`;
+            item.innerHTML = `<strong>${esc(d.username)}</strong>: ${esc(d.expression)} = ${esc(d.result)}`;
             feed.prepend(item);
             while (feed.children.length > 30) feed.removeChild(feed.lastChild);
         });
@@ -97,6 +195,7 @@ const Live = (() => {
         const room = document.getElementById("rt-room").value.trim();
         const user = document.getElementById("rt-user").value.trim() || "guest";
         if (!room) return status("Room name required");
+        messagesByIdClear();
         ensureSocket().emit("join", { room, username: user });
     }
     function leave() {
@@ -105,6 +204,11 @@ const Live = (() => {
         currentRoom = null;
         status("Left room.");
         setUsers([]);
+    }
+    function messagesByIdClear() {
+        for (const k of Object.keys(messagesById)) delete messagesById[k];
+        const log = document.getElementById("rt-chat-log");
+        if (log) log.innerHTML = "";
     }
 
     async function sendChat() {
@@ -122,10 +226,49 @@ const Live = (() => {
         }
         try {
             const stored = await API.post(`/api/chat/${currentRoom}`, { username: user, body, encrypted });
-            addChat({ username: user, body: text, decrypted: text, encrypted });
+            appendMessage({ ...stored, decrypted: text });
             socket.emit("chat_send", { room: currentRoom, username: user, body, encrypted, id: stored.id });
         } catch (e) { UI.toast("Send failed: " + e.message, "error"); }
         input.value = "";
+    }
+
+    async function sendVoice() {
+        if (!currentRoom) return;
+        const btn = document.getElementById("rt-mic");
+        if (!VoiceRecorder.isRecording()) {
+            try {
+                await VoiceRecorder.start();
+                btn.classList.add("recording");
+                btn.textContent = "⏹ Stop";
+                status("Recording…");
+            } catch (e) { UI.toast("Mic error: " + e.message, "error"); }
+            return;
+        }
+        try {
+            const { blob, durationMs } = await VoiceRecorder.stop();
+            btn.classList.remove("recording");
+            btn.textContent = "🎤 Voice";
+            status("Uploading…");
+            const key = await ensureKey();
+            const data = await VoiceRecorder.upload(blob, durationMs, key);
+            const user = document.getElementById("rt-user").value.trim() || "guest";
+            const stored = await API.post(`/api/chat/${currentRoom}`, {
+                username: user, body: "", encrypted: !!key,
+                kind: "voice", attachment_id: data.id,
+            });
+            // Optimistic
+            const optimistic = { ...stored, kind: "voice",
+                                 attachment_id: data.id, duration_ms: durationMs,
+                                 encrypted: !!key };
+            appendMessage(optimistic);
+            socket.emit("chat_send", { room: currentRoom, username: user,
+                                       body: "", encrypted: !!key,
+                                       id: stored.id });
+            status("Sent voice clip.");
+        } catch (e) {
+            UI.toast("Voice send failed: " + e.message, "error");
+            status("Error.");
+        }
     }
 
     async function loadHistory() {
@@ -133,43 +276,23 @@ const Live = (() => {
         const log = document.getElementById("rt-chat-log");
         if (!log) return;
         log.innerHTML = "";
+        for (const k of Object.keys(messagesById)) delete messagesById[k];
         try {
-            const data = await API.get(`/api/chat/${currentRoom}?limit=50`);
-            const key = await ensureKey();
-            for (const m of data.messages) {
-                if (m.encrypted && key) {
-                    try { addChat({ username: m.username, body: await decrypt(key, m.body), encrypted: true }); }
-                    catch { addChat({ username: m.username, body: "[encrypted]", encrypted: true }); }
-                } else addChat(m);
+            const data = await API.get(`/api/chat/${currentRoom}?limit=100`);
+            // Load reactions in one batch
+            if (window.Reactions && data.messages.length) {
+                const ids = data.messages.map(m => m.id);
+                await Reactions.load("chat", ids);
             }
+            for (const m of data.messages) appendMessage(m);
         } catch (e) { console.warn(e); }
-    }
-
-    async function refreshFiles() {
-        const list = document.getElementById("rt-file-list");
-        if (!list) return;
-        try {
-            const data = await API.get(`/api/files/${currentRoom}`);
-            if (!data.files.length) { list.innerHTML = `<div class="empty">No files yet.</div>`; return; }
-            list.innerHTML = data.files.map(f => `
-                <div class="feed-item" style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
-                    <span>🔒 <strong>${f.filename}</strong> <span class="muted">(${fmtBytes(f.size_bytes)})</span></span>
-                    <button class="btn btn-ghost btn-icon" data-dl="${f.id}" data-name="${f.filename}">↓</button>
-                </div>
-            `).join("");
-        } catch (e) { console.warn(e); }
-    }
-
-    function fmtBytes(n) {
-        if (n < 1024) return n + " B";
-        if (n < 1024 * 1024) return (n / 1024).toFixed(1) + " KB";
-        return (n / 1024 / 1024).toFixed(2) + " MB";
     }
 
     function init() {
         document.getElementById("rt-join")?.addEventListener("click", join);
         document.getElementById("rt-leave")?.addEventListener("click", leave);
         document.getElementById("rt-send")?.addEventListener("click", sendChat);
+        document.getElementById("rt-mic")?.addEventListener("click", sendVoice);
         document.getElementById("rt-chat-input")?.addEventListener("keydown", (e) => {
             if (e.key === "Enter") { e.preventDefault(); sendChat(); }
         });
@@ -177,9 +300,15 @@ const Live = (() => {
             const p = document.getElementById("rt-passphrase");
             if (p) p.style.display = e.target.checked ? "block" : "none";
         });
+        document.getElementById("rt-export-md")?.addEventListener("click", () => {
+            if (currentRoom) ExportUI.download("room", currentRoom, "md", "chat");
+        });
+        document.getElementById("rt-export-html")?.addEventListener("click", () => {
+            if (currentRoom) ExportUI.download("room", currentRoom, "html", "chat");
+        });
     }
 
-    function onShow() { if (currentRoom) refreshFiles(); }
+    function onShow() {}
 
     return { init, onShow };
 })();

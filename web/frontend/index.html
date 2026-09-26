@@ -9,6 +9,7 @@
 <link rel="apple-touch-icon" href="/static/icon-192.svg" />
 <link rel="stylesheet" href="/static/css/design.css" />
 <link rel="stylesheet" href="/static/css/components.css" />
+<link rel="stylesheet" href="/static/css/chat-addons.css" />
 <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 <script src="/static/crypto.js"></script>
 <script src="/static/i18n.js"></script>
@@ -99,6 +100,10 @@
             <p id="rt-status" class="muted">Not connected.</p>
             <div id="rt-avatars"></div>
             <hr style="border:none;border-top:1px solid var(--border);margin:var(--sp-4) 0;" />
+            <div class="export-bar">
+                <button id="rt-export-md" class="btn">⬇ Markdown</button>
+                <button id="rt-export-html" class="btn">⬇ HTML / PDF</button>
+            </div>
             <h3>Chat</h3>
             <div class="field">
                 <label for="rt-e2e"><input id="rt-e2e" type="checkbox" style="width:auto;margin-right:6px;" /> E2E encrypt</label>
@@ -108,6 +113,7 @@
             <p id="rt-typing" class="muted" style="height:1.2em;"></p>
             <div class="field-row">
                 <input id="rt-chat-input" class="input" placeholder="Type a message…" />
+                <button id="rt-mic" class="btn" style="flex:0 0 auto;" title="Record voice">🎤 Voice</button>
                 <button id="rt-send" class="btn btn-primary" style="flex:0 0 auto;">Send</button>
             </div>
             <h3 class="mt-4">Files</h3>
@@ -151,9 +157,15 @@
             <div id="dm-threads"></div>
             <div id="dm-conversation" class="hidden mt-4">
                 <h3>Chat with <span id="dm-conversation-title"></span></h3>
+                <div class="export-bar">
+                    <button id="dm-export-md" class="btn">⬇ Markdown</button>
+                    <button id="dm-export-html" class="btn">⬇ HTML / PDF</button>
+                </div>
+                <div id="dm-typing"></div>
                 <div id="dm-messages" class="chat-log" style="max-height:300px;"></div>
                 <div class="field-row mt-2">
                     <input id="dm-input" class="input" placeholder="Type a message…" />
+                    <button id="dm-mic" class="btn" style="flex:0 0 auto;" title="Voice message">🎤</button>
                     <button id="dm-send" class="btn btn-primary" style="flex:0 0 auto;">Send</button>
                 </div>
             </div>
@@ -186,6 +198,12 @@
 <script src="/static/js/offline.js"></script>
 <script src="/static/js/pwa.js"></script>
 <script src="/static/js/passkey.js"></script>
+<script src="/static/js/voice_recorder.js"></script>
+<script src="/static/js/reactions.js"></script>
+<script src="/static/js/threads.js"></script>
+<script src="/static/js/export_ui.js"></script>
+<script src="/static/js/emoji_autocomplete.js"></script>
+<script src="/static/js/message_actions.js"></script>
 <script src="/static/js/app.js"></script>
 </body>
 </html>

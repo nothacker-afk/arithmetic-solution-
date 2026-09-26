@@ -33,6 +33,10 @@ from .notifications import notifications_bp
 from .passkeys import passkeys_bp
 from .search import search_bp, init_fts as _init_search
 from .dms import dms_bp
+from .export import export_bp
+from .transcribe import transcribe_bp
+from .reactions import reactions_bp
+from .voice import voice_bp
 from .tracing import setup_tracing, current_trace_id
 from .jobs import start_if_enabled as _start_retention
 
@@ -72,6 +76,10 @@ app.register_blueprint(notifications_bp)
 app.register_blueprint(passkeys_bp)
 app.register_blueprint(search_bp)
 app.register_blueprint(dms_bp)
+app.register_blueprint(export_bp)
+app.register_blueprint(transcribe_bp)
+app.register_blueprint(reactions_bp)
+app.register_blueprint(voice_bp)
 
 
 BASIC_OPS = {

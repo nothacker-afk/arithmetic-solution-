@@ -235,3 +235,97 @@ PBKDF2(SHA-256, 100k) over `passphrase + sorted(usernames)`. The
 server stores only ciphertext.
 
 Best-effort push notification on new messages (Phase 19 FCM).
+
+## Voice Messages
+
+Record audio in the browser, encrypt it client-side, upload, play back.
+
+    POST   /api/voice        {ciphertext_b64, duration_ms, mime, encrypted}
+    GET    /api/voice/<id>   download blob
+    DELETE /api/voice/<id>   uploader only
+    GET    /api/voice        list my clips
+
+Chat and DM messages can reference a clip via `kind="voice"` and
+`attachment_id`. Blobs are E2E encrypted with the room / DM key.
+
+## Reactions
+
+    GET    /api/reactions?kind=chat|dm&message_ids=1,2,3
+    POST   /api/reactions    {kind, message_id, emoji}
+    DELETE /api/reactions    {kind, message_id, emoji}
+
+Fixed palette: 👍 ❤️ 😂 🎉 🔥 👀. Idempotent adds, per-user toggles.
+
+## Threads
+
+Reply to any top-level chat message. Single-level threading (no nesting).
+
+    POST /api/chat/<room>                   {…, parent_id: <id>}
+    GET  /api/chat/<room>/<parent_id>/replies
+
+## Export
+
+    GET /api/export/room/<room>?format=json|md|html
+    GET /api/export/dm/<thread_id>?format=json|md|html
+
+HTML exports are styled and include a "Print / Save as PDF" button.
+JSON is a raw structured dump. Markdown is a transcript.
+
+## Reply Counts & Jump to Thread (Phase 35)
+
+Chat list responses include `reply_count` on each message. Click a
+`🧵 N replies` button to open the thread inline; click it again to
+collapse. `Threads.jumpToThread(id)` scrolls to and highlights a
+specific parent message.
+
+## Emoji Autocomplete (Phase 36)
+
+Type `:` in any message input. A fuzzy picker appears with matching
+shortcodes (`:smile`, `:heart`, `:fire`, …). Arrow keys + Enter to
+insert.
+
+## DM Read Receipts & Typing (Phase 37)
+
+WebSocket events:
+- `dm_join` — subscribe to per-user DM channel
+- `dm_typing_start` / `dm_typing_stop`
+- `dm_read` — fired when the recipient opens a thread
+
+Frontend shows "✓ sent" / "✓✓ read" on your own messages plus a live
+"X is typing…" indicator.
+
+## Message Editing & Deletion (Phase 38)
+
+    PATCH  /api/chat/<room>/<id>                    {body, username}
+    DELETE /api/chat/<room>/<id>?username=...
+    GET    /api/chat/<room>/<id>/edits
+
+    PATCH  /api/dms/threads/<tid>/messages/<id>     {body}
+    DELETE /api/dms/threads/<tid>/messages/<id>
+    GET    /api/dms/threads/<tid>/messages/<id>/edits
+
+Deletes are tombstones — the row stays, `body` is emptied, `deleted=1`.
+Every edit stores the previous body in `message_edits` for later audit.
+
+## Disappearing Messages (Phase 39)
+
+    GET  /api/chat/<room>/ttl
+    PUT  /api/chat/<room>/ttl             {ttl_seconds}
+    GET  /api/dms/threads/<tid>/ttl
+    PUT  /api/dms/threads/<tid>/ttl       {ttl_seconds}
+
+New messages in a room/thread with a TTL get an `expires_at` timestamp.
+The Phase 24 retention job purges expired messages on every run.
+
+## Voice Transcription (Phase 40)
+
+    GET  /api/transcribe/available
+    POST /api/transcribe/upload    {audio_b64, mime, language}
+    POST /api/transcribe           {voice_id}     (non-encrypted clips only)
+    GET  /api/voice/<id>/transcript
+
+Powered by OpenAI Whisper when `OPENAI_API_KEY` is set. Because voice
+messages are E2E-encrypted at rest, the client decrypts locally and
+posts the plaintext bytes to `/api/transcribe/upload`. The server
+proxies to Whisper and does not persist the audio. Transcripts are
+cached on non-encrypted clips for later reuse.

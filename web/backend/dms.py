@@ -177,10 +177,16 @@ def send_message(thread_id):
         if g.user_id not in (t["user_a"], t["user_b"]):
             return jsonify({"error": "Not a participant"}), 403
 
+        ttl = _thread_ttl_seconds(conn, thread_id)
         cur = conn.execute(
-            "INSERT INTO dm_messages (thread_id, sender_id, body, encrypted) "
-            "VALUES (?, ?, ?, ?)",
-            (thread_id, g.user_id, body, 1 if encrypted else 0),
+            "INSERT INTO dm_messages (thread_id, sender_id, body, encrypted, kind, "
+            "                          attachment_id, expires_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, "
+            "  CASE WHEN ? > 0 THEN datetime('now', '+' || ? || ' seconds') ELSE NULL END)",
+            (thread_id, g.user_id, body, 1 if encrypted else 0,
+             (data.get("kind") or "text"),
+             data.get("attachment_id"),
+             ttl, ttl),
         )
         msg_id = cur.lastrowid
 
@@ -236,3 +242,143 @@ def delete_thread(thread_id):
         conn.execute("DELETE FROM dm_messages WHERE thread_id = ?", (thread_id,))
         conn.execute("DELETE FROM dm_threads WHERE id = ?", (thread_id,))
     return jsonify({"deleted": thread_id})
+
+
+@dms_bp.route("/threads/<int:thread_id>/messages/<int:msg_id>", methods=["PATCH"])
+@require_auth
+def edit_dm(thread_id, msg_id):
+    data = request.get_json(silent=True) or {}
+    new_body = (data.get("body") or "").strip()
+    if not new_body:
+        return jsonify({"error": "body required"}), 400
+    if len(new_body.encode("utf-8")) > MAX_BODY_BYTES:
+        return jsonify({"error": "Message too long"}), 400
+
+    with get_db() as conn:
+        t = conn.execute("SELECT user_a, user_b FROM dm_threads WHERE id = ?",
+                         (thread_id,)).fetchone()
+        if not t:
+            return jsonify({"error": "Thread not found"}), 404
+        if g.user_id not in (t["user_a"], t["user_b"]):
+            return jsonify({"error": "Not a participant"}), 403
+
+        row = conn.execute(
+            "SELECT sender_id, body FROM dm_messages WHERE id = ? AND thread_id = ?",
+            (msg_id, thread_id),
+        ).fetchone()
+        if not row:
+            return jsonify({"error": "Message not found"}), 404
+        if row["sender_id"] != g.user_id:
+            return jsonify({"error": "Only the sender can edit"}), 403
+
+        conn.execute(
+            "INSERT INTO message_edits (message_kind, message_id, old_body, edited_by) "
+            "VALUES ('dm', ?, ?, ?)",
+            (msg_id, row["body"], g.user_id),
+        )
+        conn.execute(
+            "UPDATE dm_messages SET body = ?, edited_at = CURRENT_TIMESTAMP WHERE id = ?",
+            (new_body, msg_id),
+        )
+        updated = conn.execute(
+            "SELECT id, sender_id, body, encrypted, kind, attachment_id, "
+            "       edited_at, deleted, expires_at, created_at "
+            "FROM dm_messages WHERE id = ?",
+            (msg_id,),
+        ).fetchone()
+
+    return jsonify(dict(updated))
+
+
+@dms_bp.route("/threads/<int:thread_id>/messages/<int:msg_id>", methods=["DELETE"])
+@require_auth
+def delete_dm(thread_id, msg_id):
+    with get_db() as conn:
+        t = conn.execute("SELECT user_a, user_b FROM dm_threads WHERE id = ?",
+                         (thread_id,)).fetchone()
+        if not t:
+            return jsonify({"error": "Thread not found"}), 404
+        if g.user_id not in (t["user_a"], t["user_b"]):
+            return jsonify({"error": "Not a participant"}), 403
+
+        row = conn.execute(
+            "SELECT sender_id FROM dm_messages WHERE id = ? AND thread_id = ?",
+            (msg_id, thread_id),
+        ).fetchone()
+        if not row:
+            return jsonify({"error": "Message not found"}), 404
+        if row["sender_id"] != g.user_id:
+            return jsonify({"error": "Only the sender can delete"}), 403
+
+        conn.execute(
+            "UPDATE dm_messages SET deleted = 1, body = '', "
+            "attachment_id = NULL, edited_at = CURRENT_TIMESTAMP WHERE id = ?",
+            (msg_id,),
+        )
+
+    return jsonify({"deleted": msg_id, "tombstone": True})
+
+
+@dms_bp.route("/threads/<int:thread_id>/messages/<int:msg_id>/edits", methods=["GET"])
+@require_auth
+def get_dm_edits(thread_id, msg_id):
+    with get_db() as conn:
+        t = conn.execute("SELECT user_a, user_b FROM dm_threads WHERE id = ?",
+                         (thread_id,)).fetchone()
+        if not t or g.user_id not in (t["user_a"], t["user_b"]):
+            return jsonify({"error": "Not found"}), 404
+        rows = conn.execute(
+            "SELECT old_body, created_at FROM message_edits "
+            "WHERE message_kind = 'dm' AND message_id = ? ORDER BY id DESC",
+            (msg_id,),
+        ).fetchall()
+    return jsonify({"edits": [dict(r) for r in rows]})
+
+
+# ---------------------------------------------------------------------
+# Disappearing messages for DMs (Phase 39)
+# ---------------------------------------------------------------------
+def _thread_ttl_seconds(conn, thread_id):
+    row = conn.execute(
+        "SELECT ttl_seconds FROM thread_ttls WHERE thread_id = ?", (thread_id,),
+    ).fetchone()
+    return int(row["ttl_seconds"]) if row else 0
+
+
+@dms_bp.route("/threads/<int:thread_id>/ttl", methods=["GET"])
+@require_auth
+def get_thread_ttl(thread_id):
+    with get_db() as conn:
+        t = conn.execute("SELECT user_a, user_b FROM dm_threads WHERE id = ?",
+                         (thread_id,)).fetchone()
+        if not t or g.user_id not in (t["user_a"], t["user_b"]):
+            return jsonify({"error": "Not found"}), 404
+        ttl = _thread_ttl_seconds(conn, thread_id)
+    return jsonify({"thread_id": thread_id, "ttl_seconds": ttl})
+
+
+@dms_bp.route("/threads/<int:thread_id>/ttl", methods=["PUT"])
+@require_auth
+def set_thread_ttl(thread_id):
+    data = request.get_json(silent=True) or {}
+    try:
+        ttl = int(data.get("ttl_seconds", 0))
+    except (TypeError, ValueError):
+        return jsonify({"error": "ttl_seconds must be an integer"}), 400
+    if ttl < 0 or ttl > 30 * 24 * 3600:
+        return jsonify({"error": "ttl_seconds must be 0..2592000"}), 400
+    with get_db() as conn:
+        t = conn.execute("SELECT user_a, user_b FROM dm_threads WHERE id = ?",
+                         (thread_id,)).fetchone()
+        if not t or g.user_id not in (t["user_a"], t["user_b"]):
+            return jsonify({"error": "Not found"}), 404
+        if ttl == 0:
+            conn.execute("DELETE FROM thread_ttls WHERE thread_id = ?", (thread_id,))
+        else:
+            conn.execute(
+                "INSERT INTO thread_ttls (thread_id, ttl_seconds) VALUES (?, ?) "
+                "ON CONFLICT(thread_id) DO UPDATE SET ttl_seconds = excluded.ttl_seconds, "
+                "updated_at = CURRENT_TIMESTAMP",
+                (thread_id, ttl),
+            )
+    return jsonify({"thread_id": thread_id, "ttl_seconds": ttl})

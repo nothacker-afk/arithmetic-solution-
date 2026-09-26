@@ -195,6 +195,61 @@ EXTRA_TABLES = [
     """,
     "CREATE INDEX IF NOT EXISTS idx_dm_messages_thread ON dm_messages(thread_id, created_at)",
 
+    """
+    CREATE TABLE IF NOT EXISTS voice_clips (
+        id TEXT PRIMARY KEY,
+        uploader TEXT NOT NULL,
+        duration_ms INTEGER NOT NULL DEFAULT 0,
+        size_bytes INTEGER NOT NULL,
+        mime TEXT NOT NULL DEFAULT 'audio/webm',
+        encrypted INTEGER NOT NULL DEFAULT 1,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS message_reactions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        message_kind TEXT NOT NULL,
+        message_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
+        emoji TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE (message_kind, message_id, user_id, emoji),
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_reactions_msg ON message_reactions(message_kind, message_id)",
+    "CREATE INDEX IF NOT EXISTS idx_reactions_user ON message_reactions(user_id)",
+
+    """
+    CREATE TABLE IF NOT EXISTS message_edits (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        message_kind TEXT NOT NULL,
+        message_id INTEGER NOT NULL,
+        old_body TEXT NOT NULL,
+        edited_by INTEGER NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (edited_by) REFERENCES users(id) ON DELETE CASCADE
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_edits_msg ON message_edits(message_kind, message_id)",
+    """
+    CREATE TABLE IF NOT EXISTS room_ttls (
+        room_id TEXT PRIMARY KEY,
+        ttl_seconds INTEGER NOT NULL,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_by INTEGER
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS thread_ttls (
+        thread_id INTEGER PRIMARY KEY,
+        ttl_seconds INTEGER NOT NULL,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_by INTEGER
+    )
+    """,
+
 ]
 
 
@@ -202,6 +257,38 @@ def _ensure_extra_tables(conn) -> None:
     """Run EXTRA_TABLES against the given connection."""
     for stmt in EXTRA_TABLES:
         conn.execute(stmt)
+
+
+
+
+def _ensure_columns(conn) -> None:
+    """Add columns that were introduced after the initial schema.
+
+    Idempotent: checks PRAGMA table_info before ALTER TABLE.
+    """
+    # chat_messages: parent_id (threads), kind, attachment_id
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(chat_messages)").fetchall()}
+    if "parent_id" not in cols:
+        conn.execute("ALTER TABLE chat_messages ADD COLUMN parent_id INTEGER")
+    if "kind" not in cols:
+        conn.execute("ALTER TABLE chat_messages ADD COLUMN kind TEXT NOT NULL DEFAULT 'text'")
+    if "attachment_id" not in cols:
+        conn.execute("ALTER TABLE chat_messages ADD COLUMN attachment_id TEXT")
+    if "edited_at" not in cols:
+        conn.execute("ALTER TABLE chat_messages ADD COLUMN edited_at TIMESTAMP")
+    if "deleted" not in cols:
+        conn.execute("ALTER TABLE chat_messages ADD COLUMN deleted INTEGER NOT NULL DEFAULT 0")
+    if "expires_at" not in cols:
+        conn.execute("ALTER TABLE chat_messages ADD COLUMN expires_at TIMESTAMP")
+
+    # dm_messages: kind, attachment_id
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(dm_messages)").fetchall()}
+    if "kind" not in cols:
+        conn.execute("ALTER TABLE dm_messages ADD COLUMN kind TEXT NOT NULL DEFAULT 'text'")
+    if "attachment_id" not in cols:
+        conn.execute("ALTER TABLE dm_messages ADD COLUMN attachment_id TEXT")
+
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_chat_parent ON chat_messages(parent_id)")
 
 
 def _sqlite_init_db():
