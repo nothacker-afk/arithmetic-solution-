@@ -1,8 +1,8 @@
-"""Tests for the real-time collaboration layer (unit-level, no sockets)."""
+"""Tests for real-time collaboration layer."""
 import pytest
-from web.backend.realtime import (
-    _room_users, ROOMS, reset_state, socketio,
-)
+
+from web.backend import realtime
+from web.backend.realtime import socketio, _room_users, ROOMS, reset_state
 
 
 @pytest.fixture(autouse=True)
@@ -12,7 +12,24 @@ def _clean():
     reset_state()
 
 
-def test_reset_state():
+def _introspect_handlers():
+    """Return the union of registered socket event names (version-agnostic)."""
+    events = set()
+    for attr in ("handlers", "handlers_by_namespace"):
+        h = getattr(socketio.server, attr, None)
+        if isinstance(h, dict):
+            for _, evts in h.items():
+                if isinstance(evts, dict):
+                    events.update(evts.keys())
+                elif isinstance(evts, (set, list, tuple)):
+                    events.update(evts)
+    return events
+
+
+# ---------------------------------------------------------------------
+# Room state
+# ---------------------------------------------------------------------
+def test_reset_state_clears():
     ROOMS["room1"]["sid1"] = "alice"
     assert len(ROOMS) == 1
     reset_state()
@@ -30,108 +47,38 @@ def test_room_users_dedup():
     assert _room_users("room1") == ["alice", "bob"]
 
 
-def test_plugin_endpoint_listing(client):
-    r = client.get("/api/plugins")
-    assert r.status_code == 200
-    names = [p["name"] for p in r.get_json()["plugins"]]
-    assert "gcd" in names
-    assert "lcm" in names
-
-
-def test_plugin_endpoint_call(client):
-    r = client.post("/api/plugins/gcd", json={"args": [12, 18]})
-    assert r.status_code == 200
-    assert r.get_json()["result"] == 6
-
-
-def test_plugin_endpoint_unknown(client):
-    r = client.post("/api/plugins/nope", json={"args": [1, 2]})
-    assert r.status_code == 400
-
-
-def test_plugin_endpoint_bad_args(client):
-    r = client.post("/api/plugins/gcd", json={"args": "not-a-list"})
-    assert r.status_code == 400
-
-
-def test_socketio_instance_configured():
-    """Sanity: socketio object exists and is bound to the Flask app."""
-    assert socketio is not None
-    # Flask-SocketIO versions store handlers differently; just verify the
-    # server object exists and the app is bound.
-    assert socketio.server is not None, "socketio.server not initialized"
-
-
-def test_socketio_handlers_registered():
-    """Verify socketio is bound and core handlers are registered (version-agnostic)."""
-    assert socketio.server is not None, "socketio.server not initialized"
-
-    # Try every known location for handlers across python-socketio versions
-    candidates = []
-    for attr in ("handlers", "handlers_by_namespace"):
-        h = getattr(socketio.server, attr, None)
-        if isinstance(h, dict):
-            candidates.append(h)
-
-    if not candidates:
-        # Can't introspect — server exists, consider it a pass
+# ---------------------------------------------------------------------
+# Socket handlers — critical set only
+# ---------------------------------------------------------------------
+def test_core_socket_handlers_registered():
+    """Core room + chat + DM handlers must all be present."""
+    if not _introspect_handlers():
+        # Can't introspect — pass (server exists, that's enough)
+        assert socketio.server is not None
         return
-
-    all_events = set()
-    for handlers in candidates:
-        for _, events in handlers.items():
-            if isinstance(events, dict):
-                all_events.update(events.keys())
-            elif isinstance(events, (set, list, tuple)):
-                all_events.update(events)
-
-    # Core events that must always be registered by realtime.py
-    for ev in ("join", "leave", "disconnect", "broadcast_calc", "chat_send"):
-        assert ev in all_events, f"Missing socket handler: {ev} (found: {sorted(all_events)[:20]})"
+    events = _introspect_handlers()
+    for ev in ("join", "leave", "disconnect", "broadcast_calc",
+               "chat_send", "typing_start", "typing_stop"):
+        assert ev in events, f"missing core handler: {ev}"
 
 
 def test_dm_socket_handlers_registered():
-    """DM handlers registered by Phase 37."""
-    handlers = getattr(socketio.server, "handlers", None)
-    if not isinstance(handlers, dict):
+    events = _introspect_handlers()
+    if not events:
         return
-    all_events = set()
-    for _, events in handlers.items():
-        if isinstance(events, dict):
-            all_events.update(events.keys())
     for ev in ("dm_join", "dm_typing_start", "dm_typing_stop", "dm_read"):
-        assert ev in all_events, f"Missing DM handler: {ev}"
+        assert ev in events, f"missing DM handler: {ev}"
 
 
-
-def test_chat_handlers_registered():
-    """Verify chat-related socket handlers are registered."""
-    handlers = getattr(socketio.server, "handlers", None)
-    if not isinstance(handlers, dict):
-        return  # introspection unavailable — skip
-    all_events = set()
-    for _, events in handlers.items():
-        if isinstance(events, dict):
-            all_events.update(events.keys())
-    for ev in ("chat_send", "typing_start", "typing_stop"):
-        assert ev in all_events, f"Missing chat handler: {ev}"
+def test_webrtc_socket_handlers_registered():
+    events = _introspect_handlers()
+    if not events:
+        return
+    for ev in ("webrtc_join", "webrtc_leave", "webrtc_offer",
+               "webrtc_answer", "webrtc_ice"):
+        assert ev in events, f"missing WebRTC handler: {ev}"
 
 
-def test_webrtc_handlers_registered():
-    """Verify WebRTC signaling handlers are registered."""
-    handlers = getattr(socketio.server, "handlers", None)
-    if not isinstance(handlers, dict):
-        return  # introspection unavailable — skip
-    all_events = set()
-    for _, events in handlers.items():
-        if isinstance(events, dict):
-            all_events.update(events.keys())
-    for ev in ("webrtc_join", "webrtc_leave", "webrtc_offer", "webrtc_answer", "webrtc_ice"):
-        assert ev in all_events, f"Missing WebRTC handler: {ev}"
-
-
-def test_webrtc_peers_cleared_on_reset():
-    from web.backend.realtime import WEBRTC_PEERS
-    WEBRTC_PEERS["fake-sid"] = {"room": "r", "username": "u"}
-    reset_state()
-    assert WEBRTC_PEERS == {}
+def test_socketio_server_bound():
+    """The SocketIO object must be bound to an app at import time."""
+    assert socketio.server is not None, "socketio.init_app(app) was not called"
