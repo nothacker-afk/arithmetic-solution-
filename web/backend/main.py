@@ -31,6 +31,12 @@ from .admin_dashboard import admin_dash_bp
 from .account import account_bp
 from .notifications import notifications_bp
 from .passkeys import passkeys_bp
+from .media import media_bp
+from .reads import reads_bp
+from .scheduled import scheduled_bp
+from .bots import bots_bp
+from .discover import discover_bp, rooms_extra_bp
+from .contacts import contacts_bp
 from .search import search_bp, init_fts as _init_search
 from .dms import dms_bp
 from .export import export_bp
@@ -74,6 +80,13 @@ app.register_blueprint(admin_dash_bp)
 app.register_blueprint(account_bp)
 app.register_blueprint(notifications_bp)
 app.register_blueprint(passkeys_bp)
+app.register_blueprint(media_bp)
+app.register_blueprint(reads_bp)
+app.register_blueprint(scheduled_bp)
+app.register_blueprint(bots_bp)
+app.register_blueprint(discover_bp)
+app.register_blueprint(rooms_extra_bp)
+app.register_blueprint(contacts_bp)
 app.register_blueprint(search_bp)
 app.register_blueprint(dms_bp)
 app.register_blueprint(export_bp)

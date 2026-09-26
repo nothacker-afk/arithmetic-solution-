@@ -10,6 +10,8 @@
 <link rel="stylesheet" href="/static/css/design.css" />
 <link rel="stylesheet" href="/static/css/components.css" />
 <link rel="stylesheet" href="/static/css/chat-addons.css" />
+<link rel="stylesheet" href="/static/css/phase41.css" />
+<link rel="stylesheet" href="/static/css/phase46.css" />
 <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 <script src="/static/crypto.js"></script>
 <script src="/static/i18n.js"></script>
@@ -37,6 +39,9 @@
         <div class="tab" data-tab="history" role="tab">History</div>
         <div class="tab" data-tab="search" role="tab">Search</div>
         <div class="tab" data-tab="dms" role="tab">DMs</div>
+        <div class="tab" data-tab="discover" role="tab">Discover</div>
+        <div class="tab" data-tab="contacts" role="tab">Contacts</div>
+        <div class="tab" data-tab="bots" role="tab">Bots</div>
     </nav>
     <main id="main" class="card">
         <section class="tab-panel active" id="panel-basic" role="tabpanel">
@@ -114,10 +119,21 @@
             <div class="field-row">
                 <input id="rt-chat-input" class="input" placeholder="Type a message…" />
                 <button id="rt-mic" class="btn" style="flex:0 0 auto;" title="Record voice">🎤 Voice</button>
+                <button id="rt-screen" class="btn" style="flex:0 0 auto;" title="Share screen">📺 Share</button>
                 <button id="rt-send" class="btn btn-primary" style="flex:0 0 auto;">Send</button>
             </div>
             <h3 class="mt-4">Files</h3>
             <div id="rt-file-list"></div>
+            
+            <h3 class="mt-4">Media gallery</h3>
+            <div class="chip-row">
+                <div class="chip active" data-media-filter="all">All</div>
+                <div class="chip" data-media-filter="file">Files</div>
+                <div class="chip" data-media-filter="voice">Voice</div>
+                <button id="media-refresh" class="btn btn-ghost btn-icon" style="margin-left:auto;">↻</button>
+            </div>
+            <div id="media-grid" class="media-grid"></div>
+
             <h3 class="mt-4">Live feed</h3>
             <div id="rt-feed"></div>
         </section>
@@ -170,9 +186,53 @@
                 </div>
             </div>
         </section>
+
+        <section class="tab-panel" id="panel-discover" role="tabpanel">
+            <div class="discover-filters">
+                <input id="discover-q" class="input" placeholder="Search rooms…" />
+                <input id="discover-tag" class="input" placeholder="tag" style="max-width:110px;" />
+                <button id="discover-refresh" class="btn btn-primary">Search</button>
+            </div>
+            <div id="discover-list"></div>
+        </section>
+
+        <section class="tab-panel" id="panel-contacts" role="tabpanel">
+            <div class="bot-create-row">
+                <input id="contact-username" class="input" placeholder="Add by username" />
+                <button id="contact-add" class="btn btn-primary">Add</button>
+                <button id="contacts-refresh" class="btn">↻</button>
+            </div>
+            <h3>Contacts</h3>
+            <div id="contacts-list"></div>
+            <h3 class="mt-4">Block list</h3>
+            <div class="bot-create-row">
+                <input id="block-username" class="input" placeholder="Block a username" />
+                <button id="block-add" class="btn btn-danger">Block</button>
+            </div>
+            <div id="blocks-list"></div>
+        </section>
+
+        <section class="tab-panel" id="panel-bots" role="tabpanel">
+            <div class="bot-create-row">
+                <input id="bot-room" class="input" placeholder="room name" />
+                <input id="bot-name" class="input" placeholder="bot name" />
+                <button id="bot-create" class="btn btn-primary">Create</button>
+                <button id="bots-refresh" class="btn">↻</button>
+            </div>
+            <p class="muted" style="font-size:var(--fs-sm);">
+                Only the room owner can create a bot. Commands: <code>!help</code> ·
+                <code>!echo</code> · <code>!time</code> · <code>!roll</code> · <code>!8ball</code>
+            </p>
+            <div id="bots-list"></div>
+        </section>
         <section class="tab-panel" id="panel-history" role="tabpanel">
             <div id="history-list"></div>
             <button id="history-refresh" class="btn mt-4">Refresh</button>
+            <h3 class="mt-4">Scheduled messages</h3>
+            <button id="sched-open" class="btn btn-primary mt-2">+ Schedule</button>
+            <button id="sched-refresh" class="btn mt-2">↻</button>
+            <div id="sched-list" class="mt-2"></div>
+
         </section>
         <div id="result" class="result-panel mt-4">Ready.</div>
     </main>
@@ -204,6 +264,11 @@
 <script src="/static/js/export_ui.js"></script>
 <script src="/static/js/emoji_autocomplete.js"></script>
 <script src="/static/js/message_actions.js"></script>
+<script src="/static/js/tabs/contacts.js"></script>
+<script src="/static/js/tabs/discover.js"></script>
+<script src="/static/js/tabs/bots.js"></script>
+<script src="/static/js/tabs/media.js"></script>
+<script src="/static/js/scheduled.js"></script>
 <script src="/static/js/app.js"></script>
 </body>
 </html>

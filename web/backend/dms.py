@@ -18,6 +18,7 @@ from .auth import require_auth
 from .database import get_db
 from .rate_limit import rate_limit
 from .audit import log_event
+from .contacts import is_blocked_either
 
 dms_bp = Blueprint("dms", __name__, url_prefix="/api/dms")
 
@@ -113,6 +114,8 @@ def start_thread():
         other = _find_user(conn, username)
         if not other:
             return jsonify({"error": "User not found"}), 404
+        if is_blocked_either(g.user_id, other["id"]):
+            return jsonify({"error": "Cannot start a conversation with this user"}), 403
         thread_id = _get_or_create_thread(conn, g.user_id, other["id"])
     return jsonify({"thread_id": thread_id, "other_username": username}), 201
 
@@ -195,6 +198,11 @@ def send_message(thread_id):
             return jsonify({"error": "Thread not found"}), 404
         if g.user_id not in (t["user_a"], t["user_b"]):
             return jsonify({"error": "Not a participant"}), 403
+
+        # Phase 41: block enforcement
+        other_id = t["user_b"] if t["user_a"] == g.user_id else t["user_a"]
+        if is_blocked_either(g.user_id, other_id):
+            return jsonify({"error": "Blocked — cannot send messages"}), 403
 
         ttl = _thread_ttl_seconds(conn, thread_id)
 

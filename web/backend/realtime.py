@@ -211,6 +211,51 @@ def on_webrtc_ice(data):
                         "candidate": (data or {}).get("candidate")}, to=target)
 
 
+
+
+# ---------------------------------------------------------------------
+# Screen sharing (Phase 48)
+# ---------------------------------------------------------------------
+@socketio.on("screen_share_start")
+def on_screen_share_start(data):
+    """Announce to the room that this user is sharing their screen.
+
+    Actual media flows peer-to-peer via WebRTC — this is only a
+    signaling/broadcast event so peers know to expect a new video track.
+    """
+    room = (data or {}).get("room", "").strip()
+    username = (data or {}).get("username", "guest")
+    if not room:
+        return
+    emit("screen_share_started", {
+        "sid": request.sid,
+        "username": username,
+    }, to=room, include_self=False)
+
+
+@socketio.on("screen_share_stop")
+def on_screen_share_stop(data):
+    room = (data or {}).get("room", "").strip()
+    username = (data or {}).get("username", "guest")
+    if not room:
+        return
+    emit("screen_share_stopped", {
+        "sid": request.sid,
+        "username": username,
+    }, to=room, include_self=False)
+
+
+@socketio.on("screen_track_ready")
+def on_screen_track_ready(data):
+    """Notify one specific peer that a new track is about to arrive."""
+    target = (data or {}).get("target_sid")
+    if not target:
+        return
+    emit("screen_track_ready", {
+        "from_sid": request.sid,
+    }, to=target)
+
+
 def reset_state():
     ROOMS.clear()
     WEBRTC_PEERS.clear()

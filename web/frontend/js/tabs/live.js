@@ -3,6 +3,7 @@ const Live = (() => {
     let currentRoom = null;
     let cryptoKey = null;
     const messagesById = {};
+    const readsBy = {};  // { last_read_message_id, username }
 
     function status(msg) {
         const el = document.getElementById("rt-status");
@@ -133,6 +134,51 @@ const Live = (() => {
         }
     }
 
+    function _myUsername() {
+        return (document.getElementById("rt-user")?.value || "").trim();
+    }
+
+    function _refreshReadMarkers() {
+        // Find the highest message the "reader" marked as read
+        const entries = Object.values(readsBy);
+        if (!entries.length) return;
+        const maxRead = Math.max(...entries.map(e => e.last_read_message_id || 0));
+        if (!maxRead) return;
+        // Hide all markers first
+        document.querySelectorAll(".read-marker").forEach(el => el.remove());
+        // Attach to the latest message I sent with id <= maxRead
+        let target = null;
+        for (const [mid, msg] of Object.entries(messagesById)) {
+            if (msg.username === _myUsername() && msg.id <= maxRead) {
+                if (!target || msg.id > target.id) target = msg;
+            }
+        }
+        if (!target) return;
+        const wrap = document.querySelector(`.msg-wrap[data-mid="${target.id}"]`);
+        if (!wrap) return;
+        const marker = document.createElement("div");
+        marker.className = "read-marker";
+        const names = entries.filter(e => e.last_read_message_id >= target.id)
+                              .map(e => e.username).filter(Boolean);
+        marker.textContent = "✓✓ read by " + (names.join(", ") || "someone");
+        wrap.querySelector(".msg-body").appendChild(marker);
+    }
+
+    async function loadReads() {
+        if (!currentRoom) return;
+        try {
+            const data = await API.get(`/api/chat/${currentRoom}/reads?since=0`);
+            for (const r of data.reads) readsBy[r.username] = r;
+            _refreshReadMarkers();
+        } catch (e) { /* ignore */ }
+    }
+
+    async function markRead(latestId) {
+        if (!currentRoom || !latestId) return;
+        try { await API.post(`/api/chat/${currentRoom}/read`, { last_message_id: latestId }); }
+        catch (e) { /* ignore */ }
+    }
+
     function appendMessage(msg) {
         const log = document.getElementById("rt-chat-log");
         if (!log || messagesById[msg.id]) return;
@@ -164,7 +210,27 @@ const Live = (() => {
         });
         socket.on("user_joined", (d) => { setUsers(d.users); });
         socket.on("user_left", (d) => { setUsers(d.users); });
-        socket.on("chat_message", (d) => { appendMessage(d); });
+        socket.on("chat_message", (d) => {
+            appendMessage(d);
+            if (d.id) markRead(d.id);
+        });
+        socket.on("screen_share_started", (d) => {
+            status((d.username || "peer") + " is sharing their screen…");
+            _showScreenBanner(d.sid, d.username);
+        });
+        socket.on("screen_share_stopped", (d) => {
+            status((d.username || "peer") + " stopped sharing.");
+            _removeScreenBanner(d.sid);
+        });
+        socket.on("screen_track_ready", async (d) => {
+            // Peer will renegotiate: we handle incoming tracks via ontrack
+            status("Receiving screen from " + (d.from_sid || "peer"));
+        });
+        socket.on("room_read", (d) => {
+            if (d.room !== currentRoom) return;
+            readsBy[d.username] = d;
+            _refreshReadMarkers();
+        });
         socket.on("typing", (d) => {
             const el = document.getElementById("rt-typing");
             if (el) el.textContent = d.state === "start" ? d.username + " is typing…" : "";
@@ -285,7 +351,63 @@ const Live = (() => {
                 await Reactions.load("chat", ids);
             }
             for (const m of data.messages) appendMessage(m);
+            if (data.messages.length) {
+                markRead(data.messages[data.messages.length - 1].id);
+            }
+            loadReads();
         } catch (e) { console.warn(e); }
+    }
+
+    let screenStream = null;
+    const screenTracks = {};  // peer_sid -> MediaStream
+
+    async function startScreenShare() {
+        if (!currentRoom) { status("Join a room first"); return; }
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+            UI.toast("Screen sharing not supported", "error");
+            return;
+        }
+        try {
+            screenStream = await navigator.mediaDevices.getDisplayMedia({
+                video: true, audio: false,
+            });
+        } catch (e) {
+            UI.toast("Screen share denied: " + e.message, "error");
+            return;
+        }
+
+        // For each existing peer connection, add the screen track
+        const user = document.getElementById("rt-user").value.trim() || "guest";
+        ensureSocket().emit("screen_share_start", { room: currentRoom, username: user });
+
+        for (const [sid, pc] of Object.entries(window._rtcPcs || {})) {
+            try {
+                const track = screenStream.getVideoTracks()[0];
+                pc.addTrack(track, screenStream);
+                socket.emit("screen_track_ready", { target_sid: sid });
+            } catch (e) { console.warn("addTrack failed for", sid, e); }
+        }
+
+        // Track ended by user
+        screenStream.getVideoTracks()[0].onended = stopScreenShare;
+
+        const btn = document.getElementById("rt-screen");
+        if (btn) { btn.textContent = "⏹ Stop share"; btn.classList.add("recording"); }
+        status("Sharing screen…");
+    }
+
+    function stopScreenShare() {
+        if (screenStream) {
+            screenStream.getTracks().forEach(t => t.stop());
+            screenStream = null;
+        }
+        const user = document.getElementById("rt-user")?.value.trim() || "guest";
+        if (socket && currentRoom) {
+            socket.emit("screen_share_stop", { room: currentRoom, username: user });
+        }
+        const btn = document.getElementById("rt-screen");
+        if (btn) { btn.textContent = "📺 Share"; btn.classList.remove("recording"); }
+        status("Screen share stopped.");
     }
 
     function init() {
@@ -293,6 +415,9 @@ const Live = (() => {
         document.getElementById("rt-leave")?.addEventListener("click", leave);
         document.getElementById("rt-send")?.addEventListener("click", sendChat);
         document.getElementById("rt-mic")?.addEventListener("click", sendVoice);
+        document.getElementById("rt-screen")?.addEventListener("click", () => {
+            if (screenStream) stopScreenShare(); else startScreenShare();
+        });
         document.getElementById("rt-chat-input")?.addEventListener("keydown", (e) => {
             if (e.key === "Enter") { e.preventDefault(); sendChat(); }
         });
@@ -306,6 +431,22 @@ const Live = (() => {
         document.getElementById("rt-export-html")?.addEventListener("click", () => {
             if (currentRoom) ExportUI.download("room", currentRoom, "html", "chat");
         });
+    }
+
+    function _showScreenBanner(sid, username) {
+        let banner = document.getElementById("screen-banner-" + sid);
+        if (!banner) {
+            banner = document.createElement("div");
+            banner.id = "screen-banner-" + sid;
+            banner.className = "screen-banner";
+            banner.innerHTML = `📺 <strong>${username}</strong> is sharing a screen`;
+            const videos = document.getElementById("rt-videos");
+            (videos || document.querySelector(".tab-panel.active")).appendChild(banner);
+        }
+    }
+
+    function _removeScreenBanner(sid) {
+        document.getElementById("screen-banner-" + sid)?.remove();
     }
 
     function onShow() {}

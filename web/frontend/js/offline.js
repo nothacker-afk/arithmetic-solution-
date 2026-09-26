@@ -185,3 +185,140 @@ const Offline = (() => {
              enqueue, flushQueue, setPref, getPref,
              supported, updateBadge };
 })();
+
+// ---------- Phase 50: full offline mode ----------
+(function () {
+    // Extra caches
+    const EXTRA_STORES = { rooms: "rooms", contacts: "contacts", media: "media" };
+
+    async function ensureStores() {
+        if (!Offline.supported()) return;
+        try {
+            const db = await new Promise((resolve, reject) => {
+                const req = indexedDB.open("arith-offline", 2);
+                req.onupgradeneeded = (e) => {
+                    const db = e.target.result;
+                    for (const store of Object.values(EXTRA_STORES)) {
+                        if (!db.objectStoreNames.contains(store)) {
+                            db.createObjectStore(store, { keyPath: "id", autoIncrement: true });
+                        }
+                    }
+                };
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = () => reject(req.error);
+            });
+            db.close();
+        } catch (e) { console.warn("[offline] ensureStores", e); }
+    }
+
+    async function cacheList(store, items) {
+        if (!Offline.supported() || !items) return;
+        try {
+            const db = await new Promise((resolve, reject) => {
+                const req = indexedDB.open("arith-offline", 2);
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = () => reject(req.error);
+            });
+            await new Promise((resolve, reject) => {
+                const tx = db.transaction(store, "readwrite");
+                const s = tx.objectStore(store);
+                s.clear();
+                for (const it of items) s.add({ data: it });
+                tx.oncomplete = resolve;
+                tx.onerror = reject;
+            });
+            db.close();
+        } catch (e) { console.warn("[offline] cacheList", e); }
+    }
+
+    async function readList(store) {
+        if (!Offline.supported()) return [];
+        try {
+            const db = await new Promise((resolve, reject) => {
+                const req = indexedDB.open("arith-offline", 2);
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = () => reject(req.error);
+            });
+            const all = await new Promise((resolve, reject) => {
+                const tx = db.transaction(store, "readonly");
+                const req = tx.objectStore(store).getAll();
+                req.onsuccess = () => resolve(req.result || []);
+                req.onerror = reject;
+            });
+            db.close();
+            return all.map(x => x.data);
+        } catch { return []; }
+    }
+
+    // Hijack common GETs to prime the cache
+    const _origRequest = API.request.bind(API);
+    API.request = async function (path, opts = {}) {
+        const method = (opts.method || "GET").toUpperCase();
+        try {
+            const res = await _origRequest(path, opts);
+            // Prime caches on successful GETs
+            if (method === "GET") {
+                if (path === "/api/dms/threads") cacheList("rooms", res.threads || []);
+                if (path === "/api/contacts") cacheList("contacts", res.contacts || []);
+                if (path.startsWith("/api/rooms/") && path.endsWith("/media")) {
+                    cacheList("media", res.items || []);
+                }
+            }
+            return res;
+        } catch (e) {
+            // Offline fallback for common GETs
+            if (method === "GET" && !navigator.onLine) {
+                if (path === "/api/dms/threads") {
+                    return { threads: await readList("rooms") };
+                }
+                if (path === "/api/contacts") {
+                    return { contacts: await readList("contacts") };
+                }
+                if (path.startsWith("/api/rooms/") && path.endsWith("/media")) {
+                    return { items: await readList("media"), counts: { files: 0, voice: 0, total: 0 } };
+                }
+            }
+            throw e;
+        }
+    };
+
+    // Sync indicator
+    function updateSyncStatus() {
+        let el = document.getElementById("sync-status");
+        if (!el) {
+            el = document.createElement("span");
+            el.id = "sync-status";
+            el.className = "sync-indicator";
+            document.querySelector(".header-actions")?.prepend(el);
+        }
+        if (!navigator.onLine) {
+            el.textContent = "● offline";
+            el.className = "sync-indicator offline";
+        } else {
+            el.textContent = "● online";
+            el.className = "sync-indicator online";
+        }
+    }
+
+    async function replayQueue() {
+        try {
+            const queued = await Offline.listQueue();
+            if (!queued.length) return;
+            const el = document.getElementById("sync-status");
+            if (el) { el.textContent = "● syncing…"; el.className = "sync-indicator syncing"; }
+            await Offline.flushQueue();
+            updateSyncStatus();
+        } catch (e) { console.warn("[offline] replay", e); }
+    }
+
+    // Wire it up
+    document.addEventListener("DOMContentLoaded", async () => {
+        await ensureStores();
+        updateSyncStatus();
+        window.addEventListener("online", () => {
+            updateSyncStatus();
+            replayQueue();
+        });
+        window.addEventListener("offline", updateSyncStatus);
+    });
+})();

@@ -12,8 +12,14 @@ const Tab = (() => {
         location.hash = "#" + name;
         // Lazy loads
         if (name === "history" && window.History) History.load();
+        if (name === "history" && window.Scheduled) Scheduled.listPending();
         if (name === "dms" && window.DMs) DMs.onShow();
+        if (name === "discover" && window.Discover) Discover.onShow();
+        if (name === "contacts" && window.Contacts) Contacts.onShow();
+        if (name === "bots" && window.Bots) Bots.onShow();
+
         if (name === "realtime" && window.Live) Live.onShow();
+        if (name === "realtime" && window.MediaGallery) MediaGallery.onShow();
     }
 
     function init() {
@@ -158,6 +164,11 @@ document.addEventListener("DOMContentLoaded", () => {
     if (window.Matrix) Matrix.init();
     if (window.AI) AI.init();
     if (window.Search) Search.init();
+    if (window.Contacts) Contacts.init();
+    if (window.Discover) Discover.init();
+    if (window.Bots) Bots.init();
+    if (window.MediaGallery) MediaGallery.init();
+    if (window.Scheduled) Scheduled.init();
     if (window.DMs) DMs.init();
     if (window.Live) Live.init();
     if (window.PWA) PWA.init();

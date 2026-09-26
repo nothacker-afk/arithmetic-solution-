@@ -6,223 +6,292 @@
 <title>Component Gallery — Arithmetic Super App</title>
 <link rel="stylesheet" href="/static/css/design.css" />
 <link rel="stylesheet" href="/static/css/components.css" />
-<style>
-    .section { margin-bottom: var(--sp-8); }
-    .section h2 { color: var(--accent); margin-bottom: var(--sp-4); }
-    .row { display: flex; gap: var(--sp-3); flex-wrap: wrap; align-items: center; margin-bottom: var(--sp-3); }
-    .demo-panel { background: var(--bg-1); padding: var(--sp-5); border-radius: var(--radius-lg); border: 1px solid var(--border); }
-    .swatch { display: inline-block; width: 60px; height: 60px; border-radius: var(--radius); margin-right: var(--sp-2); border: 1px solid var(--border); }
-    .token { display: inline-block; font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--fg-2); margin-right: var(--sp-4); }
-</style>
+<link rel="stylesheet" href="/static/css/chat-addons.css" />
+<link rel="stylesheet" href="/static/css/phase41.css" />
+<link rel="stylesheet" href="/static/css/phase46.css" />
 </head>
 <body>
-<div class="app-shell" style="max-width:900px;">
-    <header class="app-header">
-        <h1 class="app-title">Component Gallery</h1>
-        <div class="header-actions">
-            <button id="theme-btn" class="btn btn-icon">🌓</button>
-            <a href="/" class="btn">← Back to app</a>
-        </div>
-    </header>
+<div class="gallery-layout">
+    <nav class="gallery-nav" id="gallery-nav"></nav>
+    <main id="gallery-main">
 
-    <div class="demo-panel">
-        <div class="section">
+        <section class="gallery-section" id="colors">
             <h2>Colors</h2>
-            <div class="row">
-                <div><span class="swatch" style="background:var(--bg-0)"></span><div class="token">--bg-0</div></div>
-                <div><span class="swatch" style="background:var(--bg-1)"></span><div class="token">--bg-1</div></div>
-                <div><span class="swatch" style="background:var(--bg-2)"></span><div class="token">--bg-2</div></div>
-                <div><span class="swatch" style="background:var(--bg-3)"></span><div class="token">--bg-3</div></div>
-                <div><span class="swatch" style="background:var(--accent)"></span><div class="token">--accent</div></div>
-                <div><span class="swatch" style="background:var(--accent-2)"></span><div class="token">--accent-2</div></div>
-                <div><span class="swatch" style="background:var(--danger)"></span><div class="token">--danger</div></div>
-                <div><span class="swatch" style="background:var(--success)"></span><div class="token">--success</div></div>
-                <div><span class="swatch" style="background:var(--warning)"></span><div class="token">--warning</div></div>
-            </div>
-        </div>
+            <div class="gallery-demo" id="demo-colors"></div>
+        </section>
 
-        <div class="section">
+        <section class="gallery-section" id="typography">
             <h2>Typography</h2>
-            <h1>H1 — The quick brown fox</h1>
-            <h2>H2 — The quick brown fox</h2>
-            <h3>H3 — The quick brown fox</h3>
-            <p>Body text. Lorem ipsum dolor sit amet, consectetur adipiscing elit. <code>Inline code</code> looks like this.</p>
-            <p class="muted">Muted paragraph.</p>
-        </div>
+            <div class="gallery-demo">
+                <h1>H1 heading</h1>
+                <h2>H2 heading</h2>
+                <h3>H3 heading</h3>
+                <p>Body paragraph with <a href="#">a link</a> and <code>inline code</code>.</p>
+                <p class="muted">Muted paragraph</p>
+            </div>
+        </section>
 
-        <div class="section">
+        <section class="gallery-section" id="buttons">
             <h2>Buttons</h2>
-            <div class="row">
-                <button class="btn">Default</button>
-                <button class="btn btn-primary">Primary</button>
-                <button class="btn btn-danger">Danger</button>
-                <button class="btn btn-ghost">Ghost</button>
-                <button class="btn" disabled>Disabled</button>
-                <button class="btn btn-icon">⚙</button>
+            <div class="gallery-demo">
+                <div class="row">
+                    <button class="btn">Default</button>
+                    <button class="btn btn-primary">Primary</button>
+                    <button class="btn btn-danger">Danger</button>
+                    <button class="btn btn-ghost">Ghost</button>
+                    <button class="btn" disabled>Disabled</button>
+                    <button class="btn btn-icon">⚙</button>
+                </div>
             </div>
-        </div>
+            <div class="gallery-code"><button class="gallery-copy">Copy</button>&lt;button class="btn btn-primary"&gt;Primary&lt;/button&gt;</div>
+        </section>
 
-        <div class="section">
+        <section class="gallery-section" id="inputs">
             <h2>Form fields</h2>
-            <div class="field"><label>Text input</label><input class="input" placeholder="Type here…" /></div>
-            <div class="field"><label>Select</label>
-                <select class="select"><option>Option A</option><option>Option B</option></select>
+            <div class="gallery-demo">
+                <div class="field"><label>Text input</label><input class="input" placeholder="Type…" /></div>
+                <div class="field"><label>Select</label><select class="select"><option>A</option><option>B</option></select></div>
+                <div class="field"><label>Textarea</label><textarea class="input" rows="2"></textarea></div>
+                <div class="field">
+                    <label><input type="checkbox" style="width:auto;margin-right:6px;" /> Checkbox</label>
+                </div>
             </div>
-            <div class="field-row">
-                <div class="field"><label>Left</label><input class="input" /></div>
-                <div class="field"><label>Right</label><input class="input" /></div>
-            </div>
-            <div class="field">
-                <label><input type="checkbox" style="width:auto;margin-right:6px;" /> Checkbox label</label>
-            </div>
-        </div>
+        </section>
 
-        <div class="section">
+        <section class="gallery-section" id="tabs">
             <h2>Tabs</h2>
-            <nav class="tabs">
-                <div class="tab active">Active</div>
-                <div class="tab">Inactive</div>
-                <div class="tab">Another</div>
-            </nav>
-        </div>
+            <div class="gallery-demo">
+                <nav class="tabs">
+                    <div class="tab active">Active</div>
+                    <div class="tab">Inactive</div>
+                    <div class="tab">Another</div>
+                </nav>
+            </div>
+        </section>
 
-        <div class="section">
+        <section class="gallery-section" id="cards">
             <h2>Cards</h2>
-            <div class="card">
-                <h3>Card title</h3>
-                <p class="muted">This is a card with some content.</p>
+            <div class="gallery-demo">
+                <div class="card"><h3>Card title</h3><p class="muted">Body text.</p></div>
             </div>
-        </div>
+        </section>
 
-        <div class="section">
-            <h2>Result panel</h2>
-            <div class="result-panel">42 + 8 = 50</div>
-            <div class="result-panel success mt-2">15% of 240 = 36</div>
-            <div class="result-panel error mt-2">Error: Division by zero</div>
-        </div>
-
-        <div class="section">
+        <section class="gallery-section" id="badges">
             <h2>Badges</h2>
-            <div class="row">
+            <div class="gallery-demo">
                 <span class="badge">Default</span>
-                <span class="badge live">Live</span>
-                <span class="badge off">Offline</span>
+                <span class="badge live" style="margin-left:6px;">Live</span>
+                <span class="badge off" style="margin-left:6px;">Off</span>
             </div>
-        </div>
+        </section>
 
-        <div class="section">
-            <h2>Chat log</h2>
-            <div class="chat-log" style="max-height:140px;">
-                <div class="chat-line"><strong>alice</strong>: Hi there!</div>
-                <div class="chat-line"><strong>bob</strong>: 🔒 encrypted message</div>
-                <div class="chat-line system">carol joined</div>
+        <section class="gallery-section" id="result">
+            <h2>Result panel</h2>
+            <div class="gallery-demo">
+                <div class="result-panel">42 + 8 = 50</div>
+                <div class="result-panel success mt-2">15% of 240 = 36</div>
+                <div class="result-panel error mt-2">Error: division by zero</div>
             </div>
-        </div>
+        </section>
 
-        <div class="section">
-            <h2>Feed items</h2>
-            <div class="feed-item">Simple feed item</div>
-            <div class="feed-item" style="display:flex;justify-content:space-between;">
-                <span>Item with action</span>
-                <button class="btn btn-ghost btn-icon">×</button>
+        <section class="gallery-section" id="chat">
+            <h2>Chat + reactions</h2>
+            <div class="gallery-demo">
+                <div class="msg-wrap"><div class="msg-head"><strong>alice</strong></div>
+                    <div class="msg-body">Hello there</div>
+                    <div class="reaction-chips">
+                        <button class="reaction-chip mine">👍 <span>2</span></button>
+                        <button class="reaction-chip">❤️ <span>1</span></button>
+                    </div>
+                </div>
+                <div class="msg-wrap"><div class="msg-head"><strong>bob</strong></div>
+                    <div class="msg-body">🔒 encrypted message</div>
+                    <div class="read-marker">✓✓ read by alice</div>
+                </div>
             </div>
-        </div>
+        </section>
 
-        <div class="section">
-            <h2>Skeletons</h2>
-            <div class="skeleton" style="height:40px;margin-bottom:8px;"></div>
-            <div class="skeleton" style="height:40px;width:60%;"></div>
-        </div>
-
-        <div class="section">
-            <h2>Empty state</h2>
-            <div class="empty">Nothing here yet.</div>
-        </div>
-
-        <div class="section">
-            <h2>Toasts (auto-dismiss)</h2>
-            <div class="row">
-                <button class="btn" onclick="demoToast('info')">Info toast</button>
-                <button class="btn" onclick="demoToast('success')">Success toast</button>
-                <button class="btn" onclick="demoToast('error')">Error toast</button>
-                <button class="btn" onclick="demoToast('warning')">Warning toast</button>
+        <section class="gallery-section" id="voice">
+            <h2>Voice player</h2>
+            <div class="gallery-demo">
+                <div class="voice-player">
+                    <audio controls></audio>
+                    <span class="voice-dur">3.4s</span>
+                    <button class="transcribe-btn">📝</button>
+                </div>
             </div>
-        </div>
+        </section>
 
-        <div class="section">
+        <section class="gallery-section" id="media">
+            <h2>Media gallery</h2>
+            <div class="gallery-demo">
+                <div class="media-grid">
+                    <div class="media-tile"><div class="media-icon">📄</div><div class="media-label mono">report.pdf</div><div class="media-meta muted">120 KB</div></div>
+                    <div class="media-tile"><div class="media-icon">🎤</div><div class="media-label mono">3.4s voice</div><div class="media-meta muted">48 KB</div></div>
+                    <div class="media-tile"><div class="media-icon">🖼️</div><div class="media-label mono">photo.jpg</div><div class="media-meta muted">2.1 MB</div></div>
+                </div>
+            </div>
+        </section>
+
+        <section class="gallery-section" id="chips">
+            <h2>Chips</h2>
+            <div class="gallery-demo">
+                <div class="chip-row">
+                    <div class="chip active">All</div>
+                    <div class="chip">Files</div>
+                    <div class="chip">Voice</div>
+                </div>
+            </div>
+        </section>
+
+        <section class="gallery-section" id="toasts">
+            <h2>Toasts</h2>
+            <div class="gallery-demo">
+                <button class="btn" onclick="demo.toast('info')">Info</button>
+                <button class="btn" onclick="demo.toast('success')">Success</button>
+                <button class="btn" onclick="demo.toast('error')">Error</button>
+                <button class="btn" onclick="demo.toast('warning')">Warning</button>
+            </div>
+        </section>
+
+        <section class="gallery-section" id="modal">
             <h2>Modal</h2>
-            <button class="btn btn-primary" onclick="demoModal()">Open modal</button>
-        </div>
+            <div class="gallery-demo">
+                <button class="btn btn-primary" onclick="demo.modal()">Open modal</button>
+            </div>
+        </section>
 
-        <div class="section">
-            <h2>Command palette</h2>
-            <button class="btn" onclick="alert('In the real app, press Ctrl+K')">Show me (real app: Ctrl+K)</button>
-        </div>
-    </div>
+        <section class="gallery-section" id="skeletons">
+            <h2>Skeletons</h2>
+            <div class="gallery-demo">
+                <div class="skeleton" style="height:20px;margin-bottom:6px;"></div>
+                <div class="skeleton" style="height:20px;width:60%;"></div>
+            </div>
+        </section>
+
+        <section class="gallery-section" id="empty">
+            <h2>Empty state</h2>
+            <div class="gallery-demo"><div class="empty">Nothing here yet.</div></div>
+        </section>
+
+        <section class="gallery-section" id="sync">
+            <h2>Sync indicators</h2>
+            <div class="gallery-demo">
+                <span class="sync-indicator online">● online</span>
+                <span class="sync-indicator offline">● offline</span>
+                <span class="sync-indicator syncing">● syncing</span>
+            </div>
+        </section>
+    </main>
 </div>
 
 <div class="toast-container" id="toast-root"></div>
 
-<script src="/static/js/theme.js" onerror="void 0"></script>
 <script>
-// Minimal theme toggle so the gallery stands alone
-const API = { isLoggedIn: () => false, put: async () => {}, };
-const I18n = { current: () => "en" };
+// Sidebar nav
+const sections = [...document.querySelectorAll(".gallery-section")];
+const nav = document.getElementById("gallery-nav");
+nav.innerHTML = sections.map(s =>
+    `<a href="#${s.id}">${s.querySelector("h2").textContent}</a>`
+).join("");
 
-function toggleTheme() {
+// Active section tracking
+const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+        if (e.isIntersecting) {
+            nav.querySelectorAll("a").forEach(a => a.classList.remove("active"));
+            const link = nav.querySelector(`a[href="#${e.target.id}"]`);
+            if (link) link.classList.add("active");
+        }
+    });
+}, { rootMargin: "-30% 0px -60% 0px" });
+sections.forEach(s => observer.observe(s));
+
+// Copy buttons
+document.querySelectorAll(".gallery-copy").forEach(btn => {
+    btn.addEventListener("click", () => {
+        const text = btn.parentElement.textContent.replace("Copy", "").trim();
+        navigator.clipboard.writeText(text).then(() => {
+            btn.textContent = "Copied!";
+            setTimeout(() => { btn.textContent = "Copy"; }, 1500);
+        });
+    });
+});
+
+// Colors demo
+const COLORS = ["bg-0","bg-1","bg-2","bg-3","accent","accent-2",
+                "danger","success","warning","fg-0","fg-1","fg-2","fg-3"];
+document.getElementById("demo-colors").innerHTML = COLORS.map(c =>
+    `<div style="display:inline-block;text-align:center;margin-right:8px;">
+        <div style="width:60px;height:60px;border-radius:var(--radius);
+                    background:var(--${c});border:1px solid var(--border);"></div>
+        <div style="font-family:var(--font-mono);font-size:0.65rem;
+                    color:var(--fg-2);margin-top:4px;">--${c}</div>
+    </div>`
+).join("");
+
+// Theme toggle
+function applyTheme(mode) {
+    document.documentElement.classList.remove("theme-light", "theme-dark");
+    if (mode === "auto") {
+        const dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        document.documentElement.classList.add(dark ? "theme-dark" : "theme-light");
+    } else {
+        document.documentElement.classList.add("theme-" + mode);
+    }
+    localStorage.setItem("theme", mode);
+}
+applyTheme(localStorage.getItem("theme") || "auto");
+window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+    if ((localStorage.getItem("theme") || "auto") === "auto") applyTheme("auto");
+});
+
+// Demo helpers
+const demo = {
+    toast(kind) {
+        const root = document.getElementById("toast-root");
+        const el = document.createElement("div");
+        el.className = "toast " + kind;
+        el.textContent = kind.charAt(0).toUpperCase() + kind.slice(1) + " toast";
+        root.appendChild(el);
+        setTimeout(() => {
+            el.style.animation = "slideIn 220ms reverse";
+            setTimeout(() => el.remove(), 220);
+        }, 2600);
+    },
+    modal() {
+        const backdrop = document.createElement("div");
+        backdrop.className = "modal-backdrop";
+        backdrop.innerHTML = `
+            <div class="modal" role="dialog" aria-modal="true">
+                <h2>Example modal</h2>
+                <p class="muted">Modal body content goes here.</p>
+                <div class="field"><label>Sample input</label><input class="input" /></div>
+                <div class="field-row mt-4">
+                    <button class="btn btn-primary" id="gallery-modal-ok">OK</button>
+                    <button class="btn" id="gallery-modal-cancel">Cancel</button>
+                </div>
+            </div>`;
+        backdrop.addEventListener("click", e => { if (e.target === backdrop) backdrop.remove(); });
+        document.body.appendChild(backdrop);
+        backdrop.querySelector("#gallery-modal-ok").addEventListener("click", () => {
+            backdrop.remove(); demo.toast("success");
+        });
+        backdrop.querySelector("#gallery-modal-cancel").addEventListener("click", () => backdrop.remove());
+    },
+};
+
+// Add theme toggle to nav
+nav.insertAdjacentHTML("afterbegin",
+    `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 10px;margin-bottom:6px;">
+        <strong>Gallery</strong>
+        <button class="btn btn-ghost btn-icon" id="gal-theme">🌓</button>
+    </div>`);
+document.getElementById("gal-theme").addEventListener("click", () => {
     const cur = localStorage.getItem("theme") || "auto";
     const next = cur === "auto" ? "light" : cur === "light" ? "dark" : "auto";
-    document.documentElement.classList.remove("theme-light", "theme-dark");
-    if (next === "auto") {
-        document.documentElement.classList.add(
-            window.matchMedia("(prefers-color-scheme: dark)").matches ? "theme-dark" : "theme-light");
-    } else {
-        document.documentElement.classList.add("theme-" + next);
-    }
-    localStorage.setItem("theme", next);
-    document.getElementById("theme-btn").textContent = next === "auto" ? "🌓" : next === "light" ? "☀️" : "🌙";
-}
-document.getElementById("theme-btn").addEventListener("click", toggleTheme);
-
-function demoToast(kind) {
-    const root = document.getElementById("toast-root");
-    const el = document.createElement("div");
-    el.className = "toast " + kind;
-    el.textContent = kind.charAt(0).toUpperCase() + kind.slice(1) + " toast message";
-    root.appendChild(el);
-    setTimeout(() => { el.style.animation = "slideIn 220ms reverse"; setTimeout(() => el.remove(), 220); }, 2600);
-}
-
-function demoModal() {
-    const backdrop = document.createElement("div");
-    backdrop.className = "modal-backdrop";
-    backdrop.innerHTML = `
-        <div class="modal" role="dialog" aria-modal="true">
-            <h2>Example modal</h2>
-            <p class="muted">This is a modal dialog with body content.</p>
-            <div class="field"><label>Sample input</label><input class="input" /></div>
-            <div class="field-row">
-                <button class="btn btn-primary" id="modal-ok">OK</button>
-                <button class="btn" id="modal-cancel">Cancel</button>
-            </div>
-        </div>`;
-    backdrop.addEventListener("click", (e) => { if (e.target === backdrop) backdrop.remove(); });
-    document.body.appendChild(backdrop);
-    backdrop.querySelector("#modal-ok").addEventListener("click", () => { backdrop.remove(); demoToast("success"); });
-    backdrop.querySelector("#modal-cancel").addEventListener("click", () => backdrop.remove());
-}
-
-// Apply saved theme on load
-(function () {
-    const saved = localStorage.getItem("theme") || "auto";
-    if (saved === "auto") {
-        document.documentElement.classList.add(
-            window.matchMedia("(prefers-color-scheme: dark)").matches ? "theme-dark" : "theme-light");
-    } else {
-        document.documentElement.classList.add("theme-" + saved);
-    }
-    document.getElementById("theme-btn").textContent = saved === "auto" ? "🌓" : saved === "light" ? "☀️" : "🌙";
-})();
+    applyTheme(next);
+});
 </script>
 </body>
 </html>

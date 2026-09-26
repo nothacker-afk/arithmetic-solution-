@@ -329,3 +329,66 @@ messages are E2E-encrypted at rest, the client decrypts locally and
 posts the plaintext bytes to `/api/transcribe/upload`. The server
 proxies to Whisper and does not persist the audio. Transcripts are
 cached on non-encrypted clips for later reuse.
+
+## Contact Book (Phase 41)
+
+Favourites, nicknames, and block list.
+
+    GET    /api/contacts
+    POST   /api/contacts                     {username, nickname?}
+    DELETE /api/contacts/<user_id>
+    PUT    /api/contacts/<user_id>/favourite {favourite: bool}
+    GET    /api/blocks
+    POST   /api/blocks                       {username, reason?}
+    DELETE /api/blocks/<user_id>
+
+Blocking prevents DM initiation and message delivery in either
+direction. Enforcement runs in `dms.py` on both `start_thread` and
+`send_message`.
+
+## Room Discovery (Phase 42)
+
+Publish a room with a description and tags.
+
+    GET    /api/discover/rooms?q=&tag=&limit=
+    GET    /api/discover/rooms/<room>
+    GET    /api/discover/tags
+    POST   /api/rooms/<room>/publish         {description, tags}
+    DELETE /api/rooms/<room>/publish
+    PUT    /api/rooms/<room>/description     {description, tags}
+    GET    /api/rooms/<room>/meta
+
+Owner-only for write operations. Browse tab in the UI.
+
+## Bot API (Phase 43)
+
+Room-scoped bots with token auth. Only the room owner can create bots.
+
+    POST   /api/bots                         {room_id, name}     → returns token
+    GET    /api/bots
+    DELETE /api/bots/<bot_id>
+    GET    /api/bots/me                                          (Bot token)
+    POST   /api/bots/<bot_id>/messages       {body}              (Bot token)
+
+Bot commands (any line starting with `!`):
+`!help` · `!echo <text>` · `!time` · `!roll [max]` · `!8ball <q>`
+
+Example:
+
+    curl -X POST http://localhost:8000/api/bots/<id>/messages \
+      -H "Authorization: Bot <token>" \
+      -H "Content-Type: application/json" \
+      -d '{"body":"!roll 20"}'
+
+## Room-Scoped Search (Phase 44)
+
+`GET /api/search` now accepts `&room=<name>` to restrict chat results
+to a single room.
+
+## Media Gallery (Phase 45)
+
+    GET /api/rooms/<room>/media?kind=all|file|voice&limit=200
+
+Returns a merged, newest-first list of files and voice clips shared in
+the room, with counts per kind. Blobs are fetched via the existing
+`/api/files/...` and `/api/voice/...` endpoints.

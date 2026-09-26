@@ -114,6 +114,7 @@ def _escape_fts(q: str) -> str:
 def search():
     q = (request.args.get("q") or "").strip()
     scope = (request.args.get("scope") or "all").lower()
+    room_filter = (request.args.get("room") or "").strip()
     if not q:
         return jsonify({"query": q, "results": [], "count": 0, "engine": "none"})
     if len(q) > 200:
@@ -159,24 +160,46 @@ def search():
         if scope in ("all", "chat"):
             if fts_available():
                 try:
-                    rows = conn.execute(
-                        "SELECT m.id, m.username, m.body, m.room_id, m.created_at, "
-                        "  bm25(chat_fts) AS score "
-                        "FROM chat_fts JOIN chat_messages m ON m.id = chat_fts.rowid "
-                        "WHERE chat_fts MATCH ? ORDER BY score LIMIT ?",
-                        (_escape_fts(q), limit),
-                    ).fetchall()
+                    if room_filter:
+                        rows = conn.execute(
+                            "SELECT m.id, m.username, m.body, m.room_id, m.created_at, "
+                            "  bm25(chat_fts) AS score "
+                            "FROM chat_fts JOIN chat_messages m ON m.id = chat_fts.rowid "
+                            "WHERE chat_fts MATCH ? AND m.room_id = ? "
+                            "ORDER BY score LIMIT ?",
+                            (_escape_fts(q), room_filter, limit),
+                        ).fetchall()
+                    else:
+                        rows = conn.execute(
+                            "SELECT m.id, m.username, m.body, m.room_id, m.created_at, "
+                            "  bm25(chat_fts) AS score "
+                            "FROM chat_fts JOIN chat_messages m ON m.id = chat_fts.rowid "
+                            "WHERE chat_fts MATCH ? ORDER BY score LIMIT ?",
+                            (_escape_fts(q), limit),
+                        ).fetchall()
+                except Exception as e:
+                    log.warning("FTS chat query failed: %s", e)
+                    rows = []
                 except Exception as e:
                     log.warning("FTS chat query failed: %s", e)
                     rows = []
             else:
                 like = f"%{q}%"
-                rows = conn.execute(
-                    "SELECT id, username, body, room_id, created_at, 0 AS score "
-                    "FROM chat_messages WHERE body LIKE ? OR username LIKE ? "
-                    "ORDER BY created_at DESC LIMIT ?",
-                    (like, like, limit),
-                ).fetchall()
+                if room_filter:
+                    rows = conn.execute(
+                        "SELECT id, username, body, room_id, created_at, 0 AS score "
+                        "FROM chat_messages WHERE room_id = ? "
+                        "  AND (body LIKE ? OR username LIKE ?) "
+                        "ORDER BY created_at DESC LIMIT ?",
+                        (room_filter, like, like, limit),
+                    ).fetchall()
+                else:
+                    rows = conn.execute(
+                        "SELECT id, username, body, room_id, created_at, 0 AS score "
+                        "FROM chat_messages WHERE body LIKE ? OR username LIKE ? "
+                        "ORDER BY created_at DESC LIMIT ?",
+                        (like, like, limit),
+                    ).fetchall()
             for r in rows:
                 d = dict(r)
                 d["kind"] = "chat"
@@ -185,6 +208,7 @@ def search():
     return jsonify({
         "query": q,
         "scope": scope,
+        "room": room_filter or None,
         "engine": engine,
         "results": results,
         "count": len(results),

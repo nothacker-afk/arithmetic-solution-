@@ -303,7 +303,20 @@ def _ensure_extra_tables(conn) -> None:
 def _sqlite_init_db():
     with _sqlite_get_db() as conn:
         conn.executescript(SCHEMA)
-        _ensure_columns(conn)
+        try:
+            _ensure_extra_tables(conn)
+        except Exception:
+            pass
+        try:
+            _ensure_columns(conn)
+        except Exception:
+            pass
+        try:
+            from .schema_extras import ensure_extras
+            ensure_extras(conn)
+        except Exception:
+            pass
+
 
 
 def _sqlite_reset_db():

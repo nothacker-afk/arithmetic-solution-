@@ -1,0 +1,70 @@
+/* Phases 41-45 add-ons */
+
+/* Contact rows */
+.contact-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    background: var(--bg-0);
+    border-radius: var(--radius-sm);
+    margin-bottom: 4px;
+    border: 1px solid var(--border);
+}
+.contact-name { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.contact-actions { display: flex; gap: 2px; }
+.contact-actions .btn-icon { min-width: 28px; min-height: 28px; padding: 2px; }
+
+/* Media gallery grid */
+.media-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 8px;
+    margin-top: 10px;
+}
+.media-tile {
+    background: var(--bg-0);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px;
+    cursor: pointer;
+    text-align: center;
+    transition: background var(--dur-fast) var(--ease);
+}
+.media-tile:hover { background: var(--bg-2); border-color: var(--accent); }
+.media-icon { font-size: 32px; line-height: 1; margin-bottom: 6px; }
+.media-label {
+    font-size: var(--fs-xs);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.media-meta { font-size: 0.65rem; margin-top: 4px; }
+
+/* Filter chips */
+.chip-row { display: flex; gap: 4px; margin-bottom: 8px; flex-wrap: wrap; }
+.chip {
+    padding: 4px 10px;
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    font-size: var(--fs-xs);
+    cursor: pointer;
+    user-select: none;
+}
+.chip.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.chip:hover { background: var(--bg-3); }
+.chip.active:hover { background: var(--accent-soft); }
+
+/* Discover cards */
+.discover-filters { display: flex; gap: 6px; margin-bottom: 12px; }
+.discover-filters input { flex: 1; }
+
+/* Bot create row */
+.bot-create-row {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 10px;
+}
+.bot-create-row input { flex: 1; }

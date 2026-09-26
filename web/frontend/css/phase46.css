@@ -1,0 +1,131 @@
+/* Phases 46-50 additions */
+
+/* Read receipts */
+.read-marker {
+    display: inline-block;
+    margin-left: 8px;
+    font-size: 0.72em;
+    color: var(--fg-3);
+    font-family: var(--font-mono);
+}
+.msg-wrap.mine .read-marker { color: var(--success); }
+
+/* Screen share */
+.screen-banner {
+    padding: 6px 10px;
+    background: var(--accent-soft);
+    border: 1px solid var(--accent);
+    border-radius: var(--radius-sm);
+    margin: 6px 0;
+    font-size: var(--fs-sm);
+    color: var(--accent);
+}
+
+/* Scheduled messages */
+.sched-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    margin-bottom: 4px;
+    background: var(--bg-0);
+}
+
+/* Offline sync indicator */
+.sync-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: var(--fs-xs);
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--bg-2);
+    color: var(--fg-2);
+    border: 1px solid var(--border);
+}
+.sync-indicator.online { border-color: var(--success); color: var(--success); }
+.sync-indicator.offline { border-color: var(--danger); color: var(--danger); }
+.sync-indicator.syncing { border-color: var(--warning); color: var(--warning); }
+
+/* Gallery (Phase 49) */
+.gallery-layout {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: 20px;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 20px;
+}
+.gallery-nav {
+    position: sticky;
+    top: 20px;
+    align-self: start;
+    background: var(--bg-1);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px;
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+}
+.gallery-nav a {
+    display: block;
+    padding: 6px 10px;
+    border-radius: var(--radius-sm);
+    color: var(--fg-2);
+    font-size: var(--fs-sm);
+    text-decoration: none;
+}
+.gallery-nav a:hover { background: var(--bg-2); color: var(--fg-1); }
+.gallery-nav a.active { background: var(--accent-soft); color: var(--accent); }
+
+.gallery-section {
+    margin-bottom: 40px;
+    scroll-margin-top: 20px;
+}
+.gallery-section h2 {
+    color: var(--accent);
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--border);
+    margin-bottom: 16px;
+}
+.gallery-demo {
+    background: var(--bg-1);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 12px;
+}
+.gallery-code {
+    background: var(--bg-0);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 12px;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    overflow-x: auto;
+    color: var(--fg-2);
+    white-space: pre;
+    position: relative;
+}
+.gallery-copy {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    background: var(--bg-3);
+    border: none;
+    color: var(--fg-1);
+    font-size: 0.7rem;
+    padding: 2px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    opacity: 0.5;
+}
+.gallery-copy:hover { opacity: 1; }
+
+@media (max-width: 720px) {
+    .gallery-layout { grid-template-columns: 1fr; }
+    .gallery-nav { position: static; max-height: none; }
+}
