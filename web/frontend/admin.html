@@ -123,6 +123,18 @@
         </div>
     </div>
 
+
+    <div class="card full" id="analytics-card" style="margin-bottom:24px;">
+        <h2>Analytics <span id="analytics-range" style="color:var(--fg-3);font-size:.8em;"></span></h2>
+        <div style="display:flex;gap:8px;margin-bottom:12px;">
+            <button onclick="loadAnalytics(7)">7d</button>
+            <button onclick="loadAnalytics(30)">30d</button>
+            <button onclick="loadAnalytics(90)">90d</button>
+        </div>
+        <div id="analytics-charts"></div>
+        <h3 style="margin-top:16px;">Top users</h3>
+        <div id="analytics-top-users"></div>
+    </div>
     <div class="row">
         <div class="card">
             <h2>Recent users (<span id="users-count">0</span>)</h2>
@@ -437,6 +449,68 @@ if (!state.token) {
     refreshAll().catch(e => toast("Error: " + e.message));
     setInterval(refreshAll, 15000);
 }
+
+async function loadAnalytics(days = 30) {
+    try {
+        const [data, users] = await Promise.all([
+            api(`/api/admin/analytics?days=${days}`),
+            api(`/api/admin/analytics/users?days=${days}`),
+        ]);
+        document.getElementById("analytics-range").textContent = `(last ${days} days)`;
+
+        const series = data.series;
+        const colors = {
+            users: "#38bdf8",
+            messages: "#818cf8",
+            calculations: "#10b981",
+            dms: "#f59e0b",
+            audit: "#94a3b8",
+        };
+
+        const charts = Object.entries(series).map(([name, points]) => {
+            const max = Math.max(...points.map(p => p.count), 1);
+            const bars = points.map(p => {
+                const h = Math.round((p.count / max) * 60);
+                return `<div title="${p.day}: ${p.count}" style="
+                    display:inline-block;width:${Math.max(2, Math.floor(600 / points.length) - 1)}px;
+                    height:${h}px;background:${colors[name]};margin-right:1px;vertical-align:bottom;
+                "></div>`;
+            }).join("");
+            return `
+                <div style="margin-bottom:16px;">
+                    <div style="display:flex;justify-content:space-between;font-size:var(--fs-sm);">
+                        <strong>${name}</strong>
+                        <span class="muted">total: ${points.reduce((a,b) => a + b.count, 0)}</span>
+                    </div>
+                    <div style="height:64px;background:var(--bg-0);padding:2px;border-radius:var(--radius-sm);">
+                        ${bars}
+                    </div>
+                </div>`;
+        }).join("");
+
+        document.getElementById("analytics-charts").innerHTML = charts;
+
+        document.getElementById("analytics-top-users").innerHTML = users.top_users.length
+            ? `<table style="width:100%;font-size:.85rem;">
+                <tbody>
+                ${users.top_users.map(u => `
+                    <tr><td><strong>${u.username}</strong></td>
+                        <td style="text-align:right;">${u.n} messages</td></tr>
+                `).join("")}
+                </tbody></table>`
+            : `<p class="muted">No activity in this period.</p>`;
+    } catch (e) {
+        document.getElementById("analytics-charts").innerHTML =
+            `<div class="empty">Error: ${e.message}</div>`;
+    }
+}
+
+// Auto-load when admin page opens
+document.addEventListener("DOMContentLoaded", () => {
+    if (document.getElementById("analytics-card")) {
+        loadAnalytics(30);
+    }
+});
 </script>
 </body>
 </html>

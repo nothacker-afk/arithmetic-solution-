@@ -12,6 +12,8 @@
 <link rel="stylesheet" href="/static/css/chat-addons.css" />
 <link rel="stylesheet" href="/static/css/phase41.css" />
 <link rel="stylesheet" href="/static/css/phase46.css" />
+<link rel="stylesheet" href="/static/css/phase51.css" />
+<link rel="stylesheet" href="/static/css/phase56.css" />
 <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 <script src="/static/crypto.js"></script>
 <script src="/static/i18n.js"></script>
@@ -22,9 +24,11 @@
     <header class="app-header">
         <h1 class="app-title">Arithmetic Super App</h1>
         <div class="header-actions">
+            <span id="status-badge" class="hidden" title="Set status">🟢</span>
             <span id="user-label" class="muted">Guest</span>
             <button id="passkey-btn" class="btn btn-icon hidden" title="Sign in with passkey">🔑</button>
             <button id="install-btn" class="btn btn-icon hidden" title="Install app">⤓</button>
+            <button id="hotkeys-help" class="btn btn-icon" title="Keyboard shortcuts (?)">?</button>
             <button id="theme-btn" class="btn btn-icon" title="Toggle theme">🌓</button>
             <button id="lang-btn" class="btn btn-icon" title="Cycle language">EN</button>
             <button id="auth-btn" class="btn">Login</button>
@@ -39,9 +43,11 @@
         <div class="tab" data-tab="history" role="tab">History</div>
         <div class="tab" data-tab="search" role="tab">Search</div>
         <div class="tab" data-tab="dms" role="tab">DMs</div>
+        <div class="tab" data-tab="groups" role="tab">Groups</div>
         <div class="tab" data-tab="discover" role="tab">Discover</div>
         <div class="tab" data-tab="contacts" role="tab">Contacts</div>
         <div class="tab" data-tab="bots" role="tab">Bots</div>
+        <div class="tab" data-tab="room" role="tab">Room</div>
     </nav>
     <main id="main" class="card">
         <section class="tab-panel active" id="panel-basic" role="tabpanel">
@@ -187,6 +193,23 @@
             </div>
         </section>
 
+
+        <section class="tab-panel" id="panel-groups" role="tabpanel">
+            <div class="bot-create-row">
+                <button id="group-new" class="btn btn-primary">+ New group</button>
+                <button id="group-refresh" class="btn">↻</button>
+            </div>
+            <h3>Groups</h3>
+            <div id="groups-list"></div>
+            <div id="group-conversation" class="hidden mt-4">
+                <h3>Chat with <span id="group-conversation-title"></span></h3>
+                <div id="group-messages" class="chat-log" style="max-height:300px;"></div>
+                <div class="field-row mt-2">
+                    <input id="group-input" class="input" placeholder="Type a message…" />
+                    <button id="group-send" class="btn btn-primary" style="flex:0 0 auto;">Send</button>
+                </div>
+            </div>
+        </section>
         <section class="tab-panel" id="panel-discover" role="tabpanel">
             <div class="discover-filters">
                 <input id="discover-q" class="input" placeholder="Search rooms…" />
@@ -224,6 +247,39 @@
                 <code>!echo</code> · <code>!time</code> · <code>!roll</code> · <code>!8ball</code>
             </p>
             <div id="bots-list"></div>
+        </section>
+
+        <section class="tab-panel" id="panel-room" role="tabpanel">
+            <div class="field">
+                <label for="room-tab-room">Room</label>
+                <input id="room-tab-room" class="input" placeholder="room name" />
+            </div>
+            <button id="room-refresh" class="btn btn-primary">Load</button>
+
+            <div class="room-section mt-4">
+                <h3>📌 Pins</h3>
+                <div id="room-pins-list"></div>
+            </div>
+
+            <div class="room-section">
+                <h3>📖 Wiki <button id="room-wiki-new" class="btn">+ New page</button></h3>
+                <div id="room-wiki-list"></div>
+            </div>
+
+            <div class="room-section">
+                <h3>📅 Events <button id="room-event-new" class="btn">+ New event</button></h3>
+                <div id="room-events-list"></div>
+            </div>
+
+            <div class="room-section">
+                <h3>🔊 Voice channels
+                    <span style="display:flex;gap:4px;">
+                        <button id="room-vc-mute" class="btn">Mute</button>
+                        <button id="room-vc-leave" class="btn">Leave</button>
+                    </span>
+                </h3>
+                <div id="room-vc-list"></div>
+            </div>
         </section>
         <section class="tab-panel" id="panel-history" role="tabpanel">
             <div id="history-list"></div>
@@ -269,6 +325,10 @@
 <script src="/static/js/tabs/bots.js"></script>
 <script src="/static/js/tabs/media.js"></script>
 <script src="/static/js/scheduled.js"></script>
+<script src="/static/js/tabs/room.js"></script>
+<script src="/static/js/status.js"></script>
+<script src="/static/js/tabs/groups.js"></script>
+<script src="/static/js/hotkeys.js"></script>
 <script src="/static/js/app.js"></script>
 </body>
 </html>

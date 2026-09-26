@@ -392,3 +392,57 @@ to a single room.
 Returns a merged, newest-first list of files and voice clips shared in
 the room, with counts per kind. Blobs are fetched via the existing
 `/api/files/...` and `/api/voice/...` endpoints.
+
+## Message Pinning (Phase 51)
+
+    GET    /api/rooms/<room>/pins
+    POST   /api/rooms/<room>/pins                {message_id, note?}
+    DELETE /api/rooms/<room>/pins/<message_id>
+
+Up to 50 pins per room.
+
+## Room Wiki (Phase 52)
+
+    GET    /api/rooms/<room>/wiki
+    POST   /api/rooms/<room>/wiki                {title, body}
+    GET    /api/rooms/<room>/wiki/<slug>
+    PUT    /api/rooms/<room>/wiki/<slug>         {title?, body?}
+    DELETE /api/rooms/<room>/wiki/<slug>
+
+Slugs auto-generated from titles; duplicates get a numeric suffix.
+Up to 100 pages per room, 50 KB per page.
+
+## Voice Channels (Phase 53)
+
+Persistent audio rooms. Audio flows peer-to-peer over WebRTC;
+server tracks who's in which channel.
+
+    GET    /api/rooms/<room>/voice_channels
+    POST   /api/rooms/<room>/voice_channels/join    {channel, muted?}
+    POST   /api/rooms/<room>/voice_channels/leave
+    POST   /api/rooms/<room>/voice_channels/mute    {muted}
+    POST   /api/rooms/<room>/voice_channels/ping
+
+Default channels: `main`, `afk`, `music`. Stale presence purged after
+90s of no pings by the retention job.
+
+## Room Events (Phase 54)
+
+    GET    /api/rooms/<room>/events
+    POST   /api/rooms/<room>/events              {title, starts_at, ends_at?, ...}
+    GET    /api/rooms/<room>/events/<id>
+    PUT    /api/rooms/<room>/events/<id>
+    DELETE /api/rooms/<room>/events/<id>
+    POST   /api/rooms/<room>/events/<id>/rsvp    {status: going|maybe|no}
+
+Responses split into `upcoming` and `past`.
+
+## User Status (Phase 55)
+
+    GET /api/status/me
+    PUT /api/status/me                            {state, emoji?, message?}
+    GET /api/status/user/<username>
+    GET /api/status/users?ids=1,2,3
+
+States: `available`, `away`, `busy`, `dnd`, `invisible`. Emoji + message
+shown next to the header badge.

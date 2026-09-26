@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en" class="theme-dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>{{ROOM_NAME}} — Arithmetic Super App</title>
+<meta name="description" content="{{DESCRIPTION}}" />
+<meta property="og:title" content="{{ROOM_NAME}}" />
+<meta property="og:description" content="{{DESCRIPTION}}" />
+<meta property="og:type" content="website" />
+<link rel="stylesheet" href="/static/css/design.css" />
+<link rel="stylesheet" href="/static/css/components.css" />
+</head>
+<body>
+<div class="app-shell" style="max-width:600px;">
+    <header class="app-header">
+        <h1 class="app-title">{{ROOM_NAME}}</h1>
+        <a href="/" class="btn">Open app</a>
+    </header>
+    <main class="card">
+        <p style="font-size:1.05rem;">{{DESCRIPTION}}</p>
+        <div class="mt-4">
+            <span class="badge live">👥 {{MEMBER_COUNT}} members</span>
+            {{TAGS}}
+        </div>
+        <hr style="border:none;border-top:1px solid var(--border);margin:var(--sp-4) 0;" />
+        <h3>Recent activity</h3>
+        {{RECENT}}
+        <a href="/?room={{ROOM_NAME}}" class="btn btn-primary mt-4"
+           style="width:100%;">Join this room</a>
+    </main>
+    <footer class="muted text-center mt-4" style="font-size:var(--fs-xs);">
+        Powered by Arithmetic Super App
+    </footer>
+</div>
+</body>
+</html>

@@ -14,6 +14,8 @@ const Tab = (() => {
         if (name === "history" && window.History) History.load();
         if (name === "history" && window.Scheduled) Scheduled.listPending();
         if (name === "dms" && window.DMs) DMs.onShow();
+        if (name === "groups" && window.Groups) Groups.onShow();
+        if (name === "room" && window.RoomTab) RoomTab.onShow();
         if (name === "discover" && window.Discover) Discover.onShow();
         if (name === "contacts" && window.Contacts) Contacts.onShow();
         if (name === "bots" && window.Bots) Bots.onShow();
@@ -126,10 +128,12 @@ const Auth = (() => {
             label.textContent = API.username || "User";
             btn.textContent = "Logout";
             if (pkBtn) pkBtn.classList.add("hidden");
+        document.getElementById("status-badge")?.classList.remove("hidden");
         } else {
             label.textContent = "Guest";
             btn.textContent = "Login";
             if (pkBtn && window.Passkey && Passkey.supported()) pkBtn.classList.remove("hidden");
+            document.getElementById("status-badge")?.classList.add("hidden");
         }
     }
 
@@ -169,7 +173,13 @@ document.addEventListener("DOMContentLoaded", () => {
     if (window.Bots) Bots.init();
     if (window.MediaGallery) MediaGallery.init();
     if (window.Scheduled) Scheduled.init();
+    if (window.RoomTab) RoomTab.init();
+    if (window.Status) Status.init();
+    if (window.Groups) Groups.init();
     if (window.DMs) DMs.init();
     if (window.Live) Live.init();
     if (window.PWA) PWA.init();
+    document.getElementById("hotkeys-help")?.addEventListener("click", () => {
+        if (window.Hotkeys) Hotkeys.show();
+    });
 });

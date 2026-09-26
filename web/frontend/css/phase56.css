@@ -1,0 +1,33 @@
+/* Phases 56-60 additions */
+
+.group-member-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 8px;
+    border-bottom: 1px dashed var(--border);
+    font-size: var(--fs-sm);
+}
+.group-member-row:last-child { border-bottom: none; }
+.group-member-row .role { color: var(--accent); font-size: var(--fs-xs); font-weight: 600; }
+
+.template-card {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px;
+    background: var(--bg-0);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 8px;
+}
+.template-card h4 { margin-bottom: 4px; }
+.template-card p { font-size: var(--fs-sm); color: var(--fg-2); margin: 0; }
+.template-card .actions { display: flex; flex-direction: column; gap: 4px; }
+
+/* Analytics bar charts in admin */
+#analytics-charts > div > div:last-child {
+    display: flex;
+    align-items: flex-end;
+    gap: 1px;
+}

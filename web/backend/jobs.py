@@ -104,6 +104,15 @@ def run_retention() -> dict:
     except Exception as e:
         log.warning("invite purge failed: %s", e)
 
+    # ---- 5.5 Voice channel presence cleanup (Phase 53) ----
+    try:
+        from .voice_channels import purge_stale_presence
+        n = purge_stale_presence(max_idle_seconds=90)
+        if n:
+            deleted["voice_presence"] = n
+    except Exception as e:
+        log.warning("voice presence cleanup failed: %s", e)
+
     # ---- 6. Old device tokens ----
     days = _ttl("RETENTION_DEVICE_DAYS", 270)
     if days > 0:

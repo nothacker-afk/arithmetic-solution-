@@ -33,6 +33,14 @@ from .notifications import notifications_bp
 from .passkeys import passkeys_bp
 from .media import media_bp
 from .reads import reads_bp
+from .status import status_bp
+from .analytics import analytics_bp
+from .room_templates import templates_bp, apply_bp
+from .groups import groups_bp
+from .events import events_bp
+from .voice_channels import vc_bp
+from .wiki import wiki_bp
+from .pinning import pins_bp
 from .scheduled import scheduled_bp
 from .bots import bots_bp
 from .discover import discover_bp, rooms_extra_bp
@@ -82,6 +90,15 @@ app.register_blueprint(notifications_bp)
 app.register_blueprint(passkeys_bp)
 app.register_blueprint(media_bp)
 app.register_blueprint(reads_bp)
+app.register_blueprint(status_bp)
+app.register_blueprint(analytics_bp)
+app.register_blueprint(apply_bp)
+app.register_blueprint(templates_bp)
+app.register_blueprint(groups_bp)
+app.register_blueprint(events_bp)
+app.register_blueprint(vc_bp)
+app.register_blueprint(wiki_bp)
+app.register_blueprint(pins_bp)
 app.register_blueprint(scheduled_bp)
 app.register_blueprint(bots_bp)
 app.register_blueprint(discover_bp)
@@ -358,6 +375,75 @@ def gallery():
     if not path.exists():
         return jsonify({"error": "Gallery not installed"}), 404
     return send_from_directory(str(FRONTEND_DIR), "gallery.html")
+
+
+
+
+@app.route("/rooms/<room>")
+def public_room_page(room):
+    """Public, unauthenticated preview of a published room (Phase 57)."""
+    import html as _html
+    from .database import get_db
+
+    # Load room metadata
+    with get_db() as conn:
+        row = conn.execute("""
+            SELECT r.name, r.created_at, u.username AS owner,
+                   m.description, m.tags, m.published,
+                   (SELECT COUNT(*) FROM room_members WHERE room_name = r.name) AS member_count
+            FROM rooms r
+            LEFT JOIN room_meta m ON m.room_id = r.name
+            LEFT JOIN users u ON u.id = r.owner_id
+            WHERE r.name = ?
+        """, (room,)).fetchone()
+
+        if not row or not row["published"]:
+            # Not published → 404 page
+            path = FRONTEND_DIR / "offline.html"
+            if path.exists():
+                return send_from_directory(str(FRONTEND_DIR), "offline.html"), 404
+            return jsonify({"error": "Room not found or not public"}), 404
+
+        # Recent public messages (no encrypted bodies revealed)
+        recent = conn.execute("""
+            SELECT username, body, encrypted, created_at
+            FROM chat_messages WHERE room_id = ?
+            ORDER BY id DESC LIMIT 5
+        """, (room,)).fetchall()
+
+    template = FRONTEND_DIR / "pages" / "public_room.html"
+    if not template.exists():
+        return jsonify({"error": "Template not installed"}), 500
+
+    src_html = template.read_text()
+    tags_html = ""
+    if row["tags"]:
+        tags_html = " ".join(
+            f'<span class="badge">{_html.escape(t.strip())}</span>'
+            for t in row["tags"].split(",") if t.strip()
+        )
+
+    recent_html = ""
+    if recent:
+        recent_html = "<ul style='padding-left:20px;'>"
+        for r in recent:
+            body = "(encrypted)" if r["encrypted"] else (r["body"] or "")[:120]
+            recent_html += (
+                f"<li><strong>{_html.escape(r['username'])}</strong>: "
+                f"{_html.escape(body)}</li>"
+            )
+        recent_html += "</ul>"
+    else:
+        recent_html = "<p class='muted'>No messages yet.</p>"
+
+    out = src_html \
+        .replace("{{ROOM_NAME}}", _html.escape(row["name"])) \
+        .replace("{{DESCRIPTION}}", _html.escape(row["description"] or "A room on Arithmetic Super App")) \
+        .replace("{{MEMBER_COUNT}}", str(row["member_count"] or 0)) \
+        .replace("{{TAGS}}", tags_html) \
+        .replace("{{RECENT}}", recent_html)
+
+    return Response(out, mimetype="text/html")
 
 
 if __name__ == "__main__":
