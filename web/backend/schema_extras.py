@@ -535,49 +535,79 @@ def ensure_extras(conn) -> None:
         except Exception as e:
             log.warning("extra column on %s failed: %s", table, e)
 
-# Phase 80 — FTS5 virtual table for wiki search
-WIKI_FTS_SETUP = [
-    """
-    CREATE VIRTUAL TABLE IF NOT EXISTS wiki_fts USING fts5(
-        title, body, slug UNINDEXED,
-        content='wiki_pages', content_rowid='rowid',
-        tokenize='unicode61'
-    )
-    """,
-    """
-    CREATE TRIGGER IF NOT EXISTS wiki_fts_ai AFTER INSERT ON wiki_pages BEGIN
-        INSERT INTO wiki_fts(rowid, title, body, slug)
-        VALUES (new.rowid, new.title, new.body, new.slug);
-    END
-    """,
-    """
-    CREATE TRIGGER IF NOT EXISTS wiki_fts_ad AFTER DELETE ON wiki_pages BEGIN
-        INSERT INTO wiki_fts(wiki_fts, rowid, title, body, slug)
-        VALUES ('delete', old.rowid, old.title, old.body, old.slug);
-    END
-    """,
-    """
-    CREATE TRIGGER IF NOT EXISTS wiki_fts_au AFTER UPDATE ON wiki_pages BEGIN
-        INSERT INTO wiki_fts(wiki_fts, rowid, title, body, slug)
-        VALUES ('delete', old.rowid, old.title, old.body, old.slug);
-        INSERT INTO wiki_fts(rowid, title, body, slug)
-        VALUES (new.rowid, new.title, new.body, new.slug);
-    END
-    """,
-]
+
+# =====================================================================
+# Phase 80 — Wiki full-text search (FTS5)
+# =====================================================================
+WIKI_FTS_AVAILABLE = None  # cached capability check
+
+    # Phase 80 — wiki FTS (idempotent rebuild)
+    ensure_wiki_fts(conn)
 
 
-def ensure_wiki_fts(conn):
-    """Create wiki FTS tables + triggers. Idempotent (safe if FTS5 unavailable)."""
+def _wiki_fts_supported(conn) -> bool:
+    """Check if FTS5 is available in this SQLite build."""
+    global WIKI_FTS_AVAILABLE
+    if WIKI_FTS_AVAILABLE is not None:
+        return WIKI_FTS_AVAILABLE
     try:
-        for stmt in WIKI_FTS_SETUP:
-            conn.execute(stmt)
-        # Backfill once
+        conn.execute("CREATE VIRTUAL TABLE IF NOT EXISTS __fts_probe USING fts5(x)")
+        conn.execute("DROP TABLE IF EXISTS __fts_probe")
+        WIKI_FTS_AVAILABLE = True
+    except Exception:
+        WIKI_FTS_AVAILABLE = False
+    return WIKI_FTS_AVAILABLE
+
+
+def ensure_wiki_fts(conn) -> bool:
+    """Create wiki_fts + triggers, then rebuild from wiki_pages.
+
+    Safe to call repeatedly. Returns True if FTS5 is active after this call.
+    """
+    if not _wiki_fts_supported(conn):
+        return False
+
+    try:
+        # 1. Create the FTS5 table
         conn.execute("""
-            INSERT INTO wiki_fts(rowid, title, body, slug)
-            SELECT rowid, title, body, slug FROM wiki_pages
-            WHERE rowid NOT IN (SELECT rowid FROM wiki_fts)
+            CREATE VIRTUAL TABLE IF NOT EXISTS wiki_fts USING fts5(
+                title, body, slug UNINDEXED,
+                content='wiki_pages', content_rowid='rowid',
+                tokenize='unicode61'
+            )
         """)
+
+        # 2. Create sync triggers
+        conn.execute("""
+            CREATE TRIGGER IF NOT EXISTS wiki_fts_ai
+            AFTER INSERT ON wiki_pages BEGIN
+                INSERT INTO wiki_fts(rowid, title, body, slug)
+                VALUES (new.rowid, new.title, new.body, new.slug);
+            END
+        """)
+        conn.execute("""
+            CREATE TRIGGER IF NOT EXISTS wiki_fts_ad
+            AFTER DELETE ON wiki_pages BEGIN
+                INSERT INTO wiki_fts(wiki_fts, rowid, title, body, slug)
+                VALUES ('delete', old.rowid, old.title, old.body, old.slug);
+            END
+        """)
+        conn.execute("""
+            CREATE TRIGGER IF NOT EXISTS wiki_fts_au
+            AFTER UPDATE ON wiki_pages BEGIN
+                INSERT INTO wiki_fts(wiki_fts, rowid, title, body, slug)
+                VALUES ('delete', old.rowid, old.title, old.body, old.slug);
+                INSERT INTO wiki_fts(rowid, title, body, slug)
+                VALUES (new.rowid, new.title, new.body, new.slug);
+            END
+        """)
+
+        # 3. Rebuild the index from the content table.
+        #    FTS5's special 'rebuild' command re-indexes everything from
+        #    wiki_pages, which is exactly what we want — idempotent, fast.
+        conn.execute("INSERT INTO wiki_fts(wiki_fts) VALUES('rebuild')")
+        return True
     except Exception as e:
         import logging
         logging.getLogger("web.schema").warning("wiki_fts setup failed: %s", e)
+        return False
