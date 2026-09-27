@@ -10,6 +10,8 @@ Usage:
     arith doctor                               Environment diagnostics
     arith help                                 This help
 """
+from __future__ import annotations
+
 import os
 import platform
 import shutil

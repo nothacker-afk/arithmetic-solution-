@@ -175,7 +175,8 @@ const Live = (() => {
 
     async function markRead(latestId) {
         if (!currentRoom || !latestId) return;
-        try { await API.post(`/api/chat/${currentRoom}/read`, { last_message_id: latestId }); }
+        try { await API.post(`/api/chat/${currentRoom}/read`, { last_message_id: latestId }); } catch (e) {}
+        try { window.Devices && Devices.syncReadState(currentRoom, latestId); }
         catch (e) { /* ignore */ }
     }
 
@@ -203,6 +204,7 @@ const Live = (() => {
         socket.on("connect", () => status("Connected."));
         socket.on("disconnect", () => status("Disconnected."));
         socket.on("joined", (d) => {
+            document.dispatchEvent(new CustomEvent("live:joined", { detail: { room: d.room } }));
             currentRoom = d.room;
             status("Joined: " + d.room);
             setUsers(d.users);

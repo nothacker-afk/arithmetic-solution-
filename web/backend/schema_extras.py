@@ -316,6 +316,185 @@ EXTRA_TABLES = [
     )
     """,
     "CREATE INDEX IF NOT EXISTS idx_archives_room ON room_archives(room_id, created_at DESC)",
+    # --- Phase 67 — multi-device sync ---
+    """
+    CREATE TABLE IF NOT EXISTS device_sync_state (
+        user_id INTEGER NOT NULL,
+        device_id TEXT NOT NULL,
+        label TEXT,
+        platform TEXT,
+        last_sync_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        last_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (user_id, device_id),
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_device_sync_user ON device_sync_state(user_id, last_seen_at DESC)",
+
+    """
+    CREATE TABLE IF NOT EXISTS device_read_state (
+        user_id INTEGER NOT NULL,
+        device_id TEXT NOT NULL,
+        room_id TEXT NOT NULL,
+        last_read_message_id INTEGER NOT NULL,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (user_id, device_id, room_id),
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_device_read_room ON device_read_state(user_id, room_id)",
+
+    # --- Phase 68 — wiki comments ---
+    """
+    CREATE TABLE IF NOT EXISTS wiki_comments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        page_id TEXT NOT NULL,
+        user_id INTEGER NOT NULL,
+        parent_id INTEGER,
+        body TEXT NOT NULL,
+        edited_at TIMESTAMP,
+        deleted INTEGER NOT NULL DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_wiki_comments_page ON wiki_comments(page_id, created_at)",
+    "CREATE INDEX IF NOT EXISTS idx_wiki_comments_parent ON wiki_comments(parent_id)",
+
+    # --- Phase 70 — group E2E ---
+    """
+    CREATE TABLE IF NOT EXISTS group_keys (
+        group_id INTEGER PRIMARY KEY,
+        salt TEXT NOT NULL,
+        key_version INTEGER NOT NULL DEFAULT 1,
+        created_by INTEGER,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (group_id) REFERENCES group_threads(id) ON DELETE CASCADE
+    )
+    """,
+
+    # --- Phase 72 — per-action audit retention ---
+    """
+    CREATE TABLE IF NOT EXISTS audit_retention_policies (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        action_pattern TEXT NOT NULL UNIQUE,
+        retention_days INTEGER NOT NULL,
+        created_by INTEGER,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+    )
+    """,
+    # --- Phase 73 — event reminders ---
+    """
+    CREATE TABLE IF NOT EXISTS event_reminders (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        event_id TEXT NOT NULL,
+        user_id INTEGER NOT NULL,
+        minutes_before INTEGER NOT NULL DEFAULT 15,
+        sent_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE (event_id, user_id, minutes_before),
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_reminders_due ON event_reminders(sent_at, event_id)",
+
+    # --- Phase 75 — email digests ---
+    """
+    CREATE TABLE IF NOT EXISTS digest_subscriptions (
+        user_id INTEGER PRIMARY KEY,
+        frequency TEXT NOT NULL DEFAULT 'weekly',
+        enabled INTEGER NOT NULL DEFAULT 1,
+        last_sent_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )
+    """,
+
+    """
+    CREATE TABLE IF NOT EXISTS digest_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        status TEXT NOT NULL DEFAULT 'sent',
+        details TEXT
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_digest_log_user ON digest_log(user_id, sent_at DESC)",
+
+    # --- Phase 76 — advanced RBAC ---
+    """
+    CREATE TABLE IF NOT EXISTS room_roles (
+        room_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        permissions TEXT NOT NULL,
+        created_by INTEGER,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (room_id, name),
+        FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_roles_room ON room_roles(room_id)",
+
+    """
+    CREATE TABLE IF NOT EXISTS room_role_assignments (
+        room_id TEXT NOT NULL,
+        user_id INTEGER NOT NULL,
+        role_name TEXT NOT NULL,
+        assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        assigned_by INTEGER,
+        PRIMARY KEY (room_id, user_id),
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_role_assignments_user ON room_role_assignments(user_id)",
+
+    # --- Phase 74 — bulk op audit ---
+    """
+    CREATE TABLE IF NOT EXISTS bulk_operations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        room_id TEXT NOT NULL,
+        action TEXT NOT NULL,
+        actor_id INTEGER NOT NULL,
+        target_count INTEGER NOT NULL,
+        details TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_bulk_ops_room ON bulk_operations(room_id, created_at DESC)",
+    # --- Phase 79 — VAPID web push subscriptions ---
+    """
+    CREATE TABLE IF NOT EXISTS web_push_subscriptions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        endpoint TEXT NOT NULL UNIQUE,
+        p256dh TEXT NOT NULL,
+        auth TEXT NOT NULL,
+        user_agent TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        last_used_at TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_wps_user ON web_push_subscriptions(user_id, last_used_at DESC)",
+
+    # --- Phase 81 — room themes ---
+    """
+    CREATE TABLE IF NOT EXISTS room_themes (
+        room_id TEXT PRIMARY KEY,
+        accent TEXT,
+        accent_2 TEXT,
+        banner_url TEXT,
+        emoji TEXT,
+        background TEXT,
+        font_family TEXT,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_by INTEGER,
+        FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
+    )
+    """,
 ]
 
 EXTRA_COLUMNS = {
@@ -355,3 +534,50 @@ def ensure_extras(conn) -> None:
                     conn.execute(f"ALTER TABLE {table} ADD COLUMN {name} {ddl}")
         except Exception as e:
             log.warning("extra column on %s failed: %s", table, e)
+
+# Phase 80 — FTS5 virtual table for wiki search
+WIKI_FTS_SETUP = [
+    """
+    CREATE VIRTUAL TABLE IF NOT EXISTS wiki_fts USING fts5(
+        title, body, slug UNINDEXED,
+        content='wiki_pages', content_rowid='rowid',
+        tokenize='unicode61'
+    )
+    """,
+    """
+    CREATE TRIGGER IF NOT EXISTS wiki_fts_ai AFTER INSERT ON wiki_pages BEGIN
+        INSERT INTO wiki_fts(rowid, title, body, slug)
+        VALUES (new.rowid, new.title, new.body, new.slug);
+    END
+    """,
+    """
+    CREATE TRIGGER IF NOT EXISTS wiki_fts_ad AFTER DELETE ON wiki_pages BEGIN
+        INSERT INTO wiki_fts(wiki_fts, rowid, title, body, slug)
+        VALUES ('delete', old.rowid, old.title, old.body, old.slug);
+    END
+    """,
+    """
+    CREATE TRIGGER IF NOT EXISTS wiki_fts_au AFTER UPDATE ON wiki_pages BEGIN
+        INSERT INTO wiki_fts(wiki_fts, rowid, title, body, slug)
+        VALUES ('delete', old.rowid, old.title, old.body, old.slug);
+        INSERT INTO wiki_fts(rowid, title, body, slug)
+        VALUES (new.rowid, new.title, new.body, new.slug);
+    END
+    """,
+]
+
+
+def ensure_wiki_fts(conn):
+    """Create wiki FTS tables + triggers. Idempotent (safe if FTS5 unavailable)."""
+    try:
+        for stmt in WIKI_FTS_SETUP:
+            conn.execute(stmt)
+        # Backfill once
+        conn.execute("""
+            INSERT INTO wiki_fts(rowid, title, body, slug)
+            SELECT rowid, title, body, slug FROM wiki_pages
+            WHERE rowid NOT IN (SELECT rowid FROM wiki_fts)
+        """)
+    except Exception as e:
+        import logging
+        logging.getLogger("web.schema").warning("wiki_fts setup failed: %s", e)

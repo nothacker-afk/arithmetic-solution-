@@ -13,6 +13,8 @@ Endpoints:
     POST /api/transcribe/upload      multipart file    transcribe without storing
     GET  /api/transcribe/available                     is the feature enabled?
 """
+from __future__ import annotations
+
 import base64
 import io
 import os

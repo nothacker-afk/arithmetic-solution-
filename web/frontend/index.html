@@ -15,6 +15,9 @@
 <link rel="stylesheet" href="/static/css/phase51.css" />
 <link rel="stylesheet" href="/static/css/phase56.css" />
 <link rel="stylesheet" href="/static/css/phase61.css" />
+<link rel="stylesheet" href="/static/css/phase67.css" />
+<link rel="stylesheet" href="/static/css/phase73.css" />
+<link rel="stylesheet" href="/static/css/phase79.css" />
 <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 <script src="/static/crypto.js"></script>
 <script src="/static/i18n.js"></script>
@@ -26,6 +29,7 @@
         <h1 class="app-title">Arithmetic Super App</h1>
         <div class="header-actions">
             <span id="status-badge" class="hidden" title="Set status">🟢</span>
+            <span id="device-sync-badge" title="Click to see devices">💻</span>
             <span id="user-label" class="muted">Guest</span>
             <button id="passkey-btn" class="btn btn-icon hidden" title="Sign in with passkey">🔑</button>
             <button id="install-btn" class="btn btn-icon hidden" title="Install app">⤓</button>
@@ -127,6 +131,7 @@
                 <input id="rt-chat-input" class="input" placeholder="Type a message…" />
                 <button id="rt-mic" class="btn" style="flex:0 0 auto;" title="Record voice">🎤 Voice</button>
                 <button id="rt-screen" class="btn" style="flex:0 0 auto;" title="Share screen">📺 Share</button>
+                <button id="bulk-enter" class="btn" style="flex:0 0 auto;" title="Select messages">☑ Select</button>
                 <button id="rt-send" class="btn btn-primary" style="flex:0 0 auto;">Send</button>
             </div>
             <h3 class="mt-4">Files</h3>
@@ -263,6 +268,57 @@
             </div>
 
 
+
+
+
+            <div class="room-section">
+                <h3>🔍 Wiki search</h3>
+                <div class="bot-create-row">
+                    <input id="wikisearch-input" class="input" placeholder="Search wiki pages…" />
+                    <input id="wikisearch-room" class="input" placeholder="room (optional)" style="max-width:140px;" />
+                    <button id="wikisearch-go" class="btn btn-primary">Search</button>
+                </div>
+                <div id="wikisearch-results"></div>
+            </div>
+
+            <div class="room-section">
+                <h3>🎨 Room theme <button id="room-theme-edit" class="btn">Edit theme</button></h3>
+                <p class="muted" style="font-size:var(--fs-sm);">
+                    Custom accent colors, banner, and emoji for this room.
+                </p>
+            </div>
+
+            <div class="room-section">
+                <h3>🔔 Push notifications
+                    <span style="display:flex;gap:4px;">
+                        <button id="webpush-enable" class="btn">Enable</button>
+                        <button id="webpush-test" class="btn">Test</button>
+                        <button id="webpush-disable" class="btn btn-danger">Disable</button>
+                    </span>
+                </h3>
+                <button id="webpush-refresh" class="btn btn-ghost" style="font-size:var(--fs-xs);">Refresh list</button>
+                <div id="webpush-list"></div>
+            </div>
+            <div class="room-section">
+                <h3>🎭 Roles <button id="roles-new" class="btn">+ New role</button>
+                    <button id="roles-refresh" class="btn">↻</button></h3>
+                <p class="muted" style="font-size:var(--fs-sm);">
+                    Custom roles with fine-grained permissions.
+                </p>
+                <div id="roles-list"></div>
+            </div>
+
+            <div class="room-section">
+                <h3>📧 Email digest</h3>
+                <div id="digest-status"></div>
+            </div>
+            <div class="room-section">
+                <h3>💻 Devices <button id="devices-refresh" class="btn">↻</button></h3>
+                <p class="muted" style="font-size:var(--fs-sm);">
+                    All devices signed in to this account. Read state syncs across them.
+                </p>
+                <div id="devices-list"></div>
+            </div>
             <div class="room-section">
                 <h3>🎨 Emoji packs <button id="emoji-packs-new" class="btn">+ New pack</button>
                     <button id="emoji-packs-refresh" class="btn">↻</button></h3>
@@ -356,6 +412,16 @@
 <script src="/static/js/sse_client.js"></script>
 <script src="/static/js/tabs/emoji.js"></script>
 <script src="/static/js/tabs/guest_links.js"></script>
+<script src="/static/js/group_e2e.js"></script>
+<script src="/static/js/tabs/devices.js"></script>
+<script src="/static/js/tabs/wiki_comments.js"></script>
+<script src="/static/js/bulk_select.js"></script>
+<script src="/static/js/tabs/reminders.js"></script>
+<script src="/static/js/tabs/roles.js"></script>
+<script src="/static/js/tabs/digest.js"></script>
+<script src="/static/js/web_push.js"></script>
+<script src="/static/js/wiki_search.js"></script>
+<script src="/static/js/room_theme.js"></script>
 <script src="/static/js/app.js"></script>
 </body>
 </html>

@@ -8,6 +8,8 @@ Endpoints:
     DELETE /api/rooms/<room>/events/<id>         delete
     POST   /api/rooms/<room>/events/<id>/rsvp    {status: going|maybe|no}
 """
+from __future__ import annotations
+
 import re
 import uuid
 from datetime import datetime, timezone
@@ -18,6 +20,7 @@ from .database import get_db
 from .auth import require_auth
 from .rate_limit import rate_limit
 from .audit import log_event
+from .datetime_utils import parse_iso
 
 events_bp = Blueprint("events", __name__, url_prefix="/api/rooms")
 
@@ -37,7 +40,7 @@ def _parse_iso(s):
         return None
     try:
         s = s.replace("Z", "+00:00")
-        dt = datetime.fromisoformat(s)
+        dt = parse_iso(s)
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=timezone.utc)
         return dt

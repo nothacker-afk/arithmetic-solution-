@@ -5,6 +5,8 @@ returns 503 with a clear message, and the UI hides the passkey button.
 
     pip install webauthn
 """
+from __future__ import annotations
+
 import base64
 import json
 import os

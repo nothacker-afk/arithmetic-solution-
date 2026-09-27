@@ -36,6 +36,18 @@ from .reads import reads_bp
 from .status import status_bp
 from .analytics import analytics_bp
 from .archive import archive_bp
+from .audit_retention import ar_bp
+from .graphql_subscriptions import gql_sub_bp
+from .rbac import rbac_bp
+from .digests import digest_bp
+from .bulk_ops import bulk_bp
+from .event_reminders import rm_bp
+from .room_themes import themes_bp
+from .wiki_search import ws_bp
+from .web_push import wp_bp
+from .group_e2e import grp_e2e_bp
+from .wiki_comments import wc_bp
+from .sync import sync_bp
 from .guest_access import guest_bp
 from .sse import sse_bp, install_bridge as _install_sse_bridge
 from .group_threads import grp_threads_bp
@@ -98,6 +110,18 @@ app.register_blueprint(reads_bp)
 app.register_blueprint(status_bp)
 app.register_blueprint(analytics_bp)
 app.register_blueprint(archive_bp)
+app.register_blueprint(ar_bp)
+app.register_blueprint(gql_sub_bp)
+app.register_blueprint(rbac_bp)
+app.register_blueprint(digest_bp)
+app.register_blueprint(bulk_bp)
+app.register_blueprint(rm_bp)
+app.register_blueprint(themes_bp)
+app.register_blueprint(ws_bp)
+app.register_blueprint(wp_bp)
+app.register_blueprint(grp_e2e_bp)
+app.register_blueprint(wc_bp)
+app.register_blueprint(sync_bp)
 app.register_blueprint(guest_bp)
 app.register_blueprint(sse_bp)
 app.register_blueprint(grp_threads_bp)

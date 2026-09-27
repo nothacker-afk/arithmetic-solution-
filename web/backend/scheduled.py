@@ -18,6 +18,7 @@ from flask import Blueprint, request, jsonify, g
 from .database import get_db
 from .auth import require_auth
 from .rate_limit import rate_limit
+from .datetime_utils import parse_iso
 
 scheduled_bp = Blueprint("scheduled", __name__, url_prefix="/api/scheduled")
 
@@ -31,7 +32,7 @@ def _parse_iso(s: str):
         return None
     try:
         s = s.replace("Z", "+00:00")
-        dt = datetime.fromisoformat(s)
+        dt = parse_iso(s)
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=timezone.utc)
         return dt

@@ -22,6 +22,7 @@ from .database import get_db
 from .auth import require_auth
 from .rate_limit import rate_limit
 from .audit import log_event
+from .datetime_utils import parse_iso
 
 guest_bp = Blueprint("guest_access", __name__, url_prefix="/api")
 
@@ -43,7 +44,7 @@ def _expired(expires_at: str) -> bool:
     if not expires_at:
         return False
     try:
-        e = datetime.fromisoformat(expires_at.replace("Z", "+00:00"))
+        e = parse_iso(expires_at.replace("Z", "+00:00"))
         if e.tzinfo is None:
             e = e.replace(tzinfo=timezone.utc)
         return e < _now()
@@ -147,7 +148,7 @@ def list_tokens(room):
 @require_auth
 def revoke_token(token):
     if not TOKEN_RE.match(token or ""):
-        return jsonify({"error": "Invalid token"}), 400
+        return jsonify({"error": "Token not found"}), 404
     from flask import g
     with get_db() as conn:
         row = conn.execute(
@@ -166,7 +167,8 @@ def revoke_token(token):
 @guest_bp.route("/guest/<token>", methods=["GET"])
 def inspect_token(token):
     if not TOKEN_RE.match(token or ""):
-        return jsonify({"error": "Invalid token"}), 400
+        # Return 404 rather than 400 so probes can't distinguish format vs value.
+        return jsonify({"error": "Token not found"}), 404
     with get_db() as conn:
         row = conn.execute("""
             SELECT g.room_id, g.label, g.expires_at, g.uses_remaining, g.allow_write,
@@ -196,7 +198,7 @@ def inspect_token(token):
 @rate_limit(max_calls=20, window_seconds=60)
 def redeem_token(token):
     if not TOKEN_RE.match(token or ""):
-        return jsonify({"error": "Invalid token"}), 400
+        return jsonify({"error": "Token not found"}), 404
     with get_db() as conn:
         row = conn.execute("""
             SELECT room_id, expires_at, uses_remaining, allow_write, use_count

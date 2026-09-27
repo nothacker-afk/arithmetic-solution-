@@ -10,6 +10,8 @@ Handles phrases like:
 
 Falls back to a clean error if the phrase can't be parsed.
 """
+from __future__ import annotations
+
 import re
 from typing import Any, Callable, Dict, Optional
 

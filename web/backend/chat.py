@@ -273,7 +273,14 @@ def delete_message(room, msg_id):
         if not row:
             return jsonify({"error": "Message not found"}), 404
         if row["username"] != username:
-            return jsonify({"error": "Only the original author can delete"}), 403
+            # Phase 76: allow deletion by users with can_delete_others
+            from flask import g as _g
+            from .rbac import has_permission
+            try:
+                if not has_permission(conn, room, _g.user_id, "can_delete_others"):
+                    return jsonify({"error": "Only the original author can delete"}), 403
+            except Exception:
+                return jsonify({"error": "Only the original author can delete"}), 403
 
         conn.execute(
             "UPDATE chat_messages SET deleted = 1, body = '', "

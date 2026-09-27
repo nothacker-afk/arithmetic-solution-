@@ -6,6 +6,8 @@ via the existing file/voice endpoints.
 
     GET /api/rooms/<room>/media?kind=file|voice|all&limit=200
 """
+from __future__ import annotations
+
 from flask import Blueprint, request, jsonify, g
 
 from .database import get_db

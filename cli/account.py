@@ -9,6 +9,8 @@ Usage:
     python -m cli.account download-backup --token=<JWT> --id=<backup_id> [--out=<file>]
     python -m cli.account delete-backup --token=<JWT> --id=<backup_id>
 """
+from __future__ import annotations
+
 import argparse
 import base64
 import json

@@ -15,6 +15,7 @@ from .database import get_db
 from .auth import require_auth
 from .rate_limit import rate_limit
 from .audit import log_event
+from .datetime_utils import parse_iso
 
 rooms_bp = Blueprint("rooms", __name__, url_prefix="/api/rooms")
 
@@ -188,7 +189,7 @@ def join(room):
             if not inv:
                 return jsonify({"error": "Invalid invite"}), 401
             try:
-                expires = datetime.fromisoformat(inv["expires_at"])
+                expires = parse_iso(inv["expires_at"])
             except ValueError:
                 return jsonify({"error": "Invalid invite expiry"}), 500
             if expires < _now():

@@ -83,6 +83,16 @@ def run_retention() -> dict:
             if cur.rowcount:
                 deleted["chat_messages"] = cur.rowcount
 
+    # ---- 3.9 Per-action audit retention (Phase 72) ----
+    try:
+        from .audit_retention import apply_per_action_retention
+        with get_db() as conn:
+            per_action = apply_per_action_retention(conn)
+        for pat, n in per_action.items():
+            deleted[f"audit[{pat}]"] = n
+    except Exception as e:
+        log.warning("per-action audit retention failed: %s", e)
+
     # ---- 4. Old audit entries ----
     days = _ttl("RETENTION_AUDIT_DAYS", 0)
     if days > 0:

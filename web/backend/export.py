@@ -9,6 +9,8 @@ Endpoints:
     GET /api/export/room/<room>?format=md|json|html
     GET /api/export/dm/<thread_id>?format=md|json|html
 """
+from __future__ import annotations
+
 import html as html_mod
 import json
 from datetime import datetime, timezone

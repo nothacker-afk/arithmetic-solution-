@@ -1,4 +1,4 @@
-"""Tests for Phase 64 i18n expansion."""
+"""Tests for Phase 64 i18n expansion (ru/zh/hi)."""
 from web.backend.i18n import TRANSLATIONS, supported_locales, pick_locale
 
 
@@ -29,11 +29,13 @@ def test_locale_endpoint_serves_ru(client):
     r = client.get("/api/i18n/ru")
     assert r.status_code == 200
     assert r.get_json()["locale"] == "ru"
+    assert r.get_json()["strings"]["app.title"] == "Супер-приложение Арифметика"
 
 
 def test_locale_endpoint_serves_zh(client):
     r = client.get("/api/i18n/zh")
     assert r.status_code == 200
+    assert r.get_json()["locale"] == "zh"
 
 
 def test_locale_endpoint_serves_hi(client):
