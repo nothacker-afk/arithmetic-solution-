@@ -5,6 +5,7 @@ from typing import Optional
 
 
 def parse_iso(s) -> Optional[datetime]:
+    """Parse an ISO-8601 timestamp. Handles trailing Z on all Python versions."""
     if not s:
         return None
     if isinstance(s, datetime):
