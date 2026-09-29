@@ -10,6 +10,7 @@ const MessageActions = (() => {
         menu.innerHTML = `
             ${opts.canEdit ? '<button data-act="edit">✏️ Edit</button>' : ""}
             ${opts.canDelete ? '<button data-act="delete">🗑 Delete</button>' : ""}
+            ${opts.canForward ? '<button data-act="forward">➡️ Forward</button>' : ""}
             ${opts.canTranslate ? '<button data-act="translate">🌐 Translate</button>' : ""}
             <button data-act="edits">📜 Edit history</button>
         `;
@@ -27,6 +28,7 @@ const MessageActions = (() => {
                 else if (act === "delete" && opts.onDelete) opts.onDelete();
                 else if (act === "edits" && opts.onViewEdits) opts.onViewEdits();
                 else if (act === "translate" && opts.onTranslate) opts.onTranslate();
+                else if (act === "forward" && opts.onForward) opts.onForward();
             });
         });
 

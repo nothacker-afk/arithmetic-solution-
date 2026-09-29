@@ -16,6 +16,14 @@ from flask import Blueprint, request, jsonify, g
 from .auth import require_auth
 from .database import get_db
 from .rate_limit import rate_limit
+
+
+def _dispatch_group(event, payload):
+    try:
+        from .webhooks import dispatch
+        dispatch(event, payload)
+    except Exception:
+        pass
 from .audit import log_event
 
 groups_bp = Blueprint("groups", __name__, url_prefix="/api/groups")
@@ -281,4 +289,8 @@ def send_message(group_id):
     except Exception:
         pass
 
+    _dispatch_group("message.created", {
+        "kind": "group", "group_id": group_id, "id": msg_id,
+        "sender_id": g.user_id,
+    })
     return jsonify(_row_to_msg(row)), 201

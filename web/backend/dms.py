@@ -17,6 +17,14 @@ from flask import Blueprint, request, jsonify, g
 from .auth import require_auth
 from .database import get_db
 from .rate_limit import rate_limit
+
+
+def _dispatch_dm(event, payload):
+    try:
+        from .webhooks import dispatch
+        dispatch(event, payload)
+    except Exception:
+        pass
 from .audit import log_event
 from .contacts import is_blocked_either
 
@@ -117,6 +125,7 @@ def start_thread():
         if is_blocked_either(g.user_id, other["id"]):
             return jsonify({"error": "Cannot start a conversation with this user"}), 403
         thread_id = _get_or_create_thread(conn, g.user_id, other["id"])
+    _dispatch_dm("dm.created", {"thread_id": thread_id, "other": username})
     return jsonify({"thread_id": thread_id, "other_username": username}), 201
 
 
@@ -248,6 +257,10 @@ def send_message(thread_id):
     except Exception:
         pass
 
+    _dispatch_dm("message.created", {
+        "kind": "dm", "thread_id": thread_id, "id": msg_id,
+        "sender_id": g.user_id,
+    })
     return jsonify(_row_to_dict(row)), 201
 
 

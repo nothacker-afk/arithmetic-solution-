@@ -497,3 +497,35 @@ sets description + tags. Only the room owner can apply.
 Daily time-series for users, chat messages, calculations, DMs, and
 audit events. The admin dashboard renders inline bar charts — no
 external charting library required.
+
+## Global Search (Phase 85)
+
+    GET /api/search/global?q=&kinds=chat,dm,group,wiki,calc&limit=50
+
+One query across every context the user has access to: rooms,
+DMs, groups, wiki pages, and calculations. Falls back to LIKE
+when FTS5 is unavailable.
+
+## Message Forwarding (Phase 86)
+
+    POST /api/forward    {source_kind, source_id, dest_kind, dest_id, note?}
+    GET  /api/forward/history
+
+Forward any message to any other room/DM/group the user can write to.
+Preserves attribution with a `> Forwarded from **sender**` prefix.
+Attachments are passed through as references.
+
+## Outbound Webhooks (Phase 87)
+
+    GET    /api/webhooks
+    POST   /api/webhooks                        {url, events[], description?}
+    PATCH  /api/webhooks/<id>                   {url?, events?, enabled?}
+    DELETE /api/webhooks/<id>
+    GET    /api/webhooks/<id>/deliveries
+    POST   /api/webhooks/<id>/test
+
+Every delivery is signed with HMAC-SHA256 (`X-Webhook-Signature: sha256=…`).
+The secret is shown **once** on creation. Events:
+`message.created`, `dm.created`, `user.registered`, `room.published`,
+`webhook.test`. Deliveries run in daemon threads so they never block
+the request path.

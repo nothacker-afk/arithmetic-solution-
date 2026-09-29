@@ -18,6 +18,14 @@ from flask import Blueprint, request, jsonify
 from .database import get_db
 from .rate_limit import rate_limit
 
+
+def _dispatch_webhook(event, payload):
+    try:
+        from .webhooks import dispatch
+        dispatch(event, payload)
+    except Exception:
+        pass
+
 chat_bp = Blueprint("chat", __name__, url_prefix="/api/chat")
 
 MAX_BODY_BYTES = 4096
@@ -177,6 +185,10 @@ def post_message(room):
 
     out = _row_to_dict(row)
     out["reply_count"] = 0
+    _dispatch_webhook("message.created", {
+        "kind": "chat", "room": room, "id": msg_id,
+        "username": username, "body": body,
+    })
     return jsonify(out), 201
 
 

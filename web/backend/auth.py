@@ -14,6 +14,14 @@ from .validation import (
 )
 
 
+def _dispatch_auth(event, payload):
+    try:
+        from .webhooks import dispatch
+        dispatch(event, payload)
+    except Exception:
+        pass
+
+
 auth_bp = Blueprint("auth", __name__, url_prefix="/api/auth")
 
 
@@ -76,6 +84,7 @@ def register():
         )
         user_id = cur.lastrowid
 
+    _dispatch_auth("user.registered", {"user_id": user_id, "username": username})
     log_event("auth.register", actor_id=user_id, resource="user",
               resource_id=str(user_id), details={"username": username})
 

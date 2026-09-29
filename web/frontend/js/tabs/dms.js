@@ -220,10 +220,16 @@ const DMs = (() => {
                         body.classList.add("deleted");
                     } catch (e) { UI.toast("Delete failed: " + e.message, "error"); }
                 },
+                canForward: !!window.Forward,
                 canTranslate: !!window.Translate,
                 onTranslate: () => {
                     if (window.Translate) {
                         Translate.picker("chat", msg.id, msg.decrypted || msg.body || "");
+                    }
+                },
+                onForward: () => {
+                    if (window.Forward) {
+                        Forward.picker("chat", msg.id);
                     }
                 },
                 onViewEdits: () => {

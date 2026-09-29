@@ -18,6 +18,7 @@
 <link rel="stylesheet" href="/static/css/phase67.css" />
 <link rel="stylesheet" href="/static/css/phase73.css" />
 <link rel="stylesheet" href="/static/css/phase79.css" />
+<link rel="stylesheet" href="/static/css/phase85.css" />
 <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 <script src="/static/crypto.js"></script>
 <script src="/static/i18n.js"></script>
@@ -151,6 +152,15 @@
         </section>
 
         <section class="tab-panel" id="panel-search" role="tabpanel">
+            <div class="room-section">
+                <h3>🌐 Global search</h3>
+                <div class="global-search-bar">
+                    <input id="gs-input" class="input" placeholder="Search rooms, DMs, groups, wiki, calculations…" />
+                    <button id="gs-go" class="btn btn-primary">Search</button>
+                </div>
+                <div id="gs-results"></div>
+            </div>
+
             <div class="field">
                 <label for="search-input">Search</label>
                 <input id="search-input" class="input" placeholder="Type to search calculations and chat…" />
@@ -300,6 +310,15 @@
                 <div id="webpush-list"></div>
             </div>
 
+
+            <div class="room-section">
+                <h3>🪝 Webhooks <button id="webhooks-new" class="btn">+ New</button>
+                    <button id="webhooks-refresh" class="btn">↻</button></h3>
+                <p class="muted" style="font-size:var(--fs-sm);">
+                    POST signed JSON to your URLs when events happen.
+                </p>
+                <div id="webhooks-list"></div>
+            </div>
             <div class="room-section">
                 <h3>🕐 Retention overrides</h3>
                 <p class="muted" style="font-size:var(--fs-sm);">
@@ -432,6 +451,9 @@
 <script src="/static/js/room_theme.js"></script>
 <script src="/static/js/translation.js"></script>
 <script src="/static/js/tabs/room_retention.js"></script>
+<script src="/static/js/global_search.js"></script>
+<script src="/static/js/forwarding.js"></script>
+<script src="/static/js/tabs/webhooks.js"></script>
 <script src="/static/js/app.js"></script>
 </body>
 </html>
