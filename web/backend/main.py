@@ -43,6 +43,9 @@ from .digests import digest_bp
 from .bulk_ops import bulk_bp
 from .event_reminders import rm_bp
 from .room_themes import themes_bp
+from .room_retention import retention_bp
+from .translation import translate_bp
+from .dm_threads import dm_threads_bp
 from .wiki_search import ws_bp
 from .web_push import wp_bp
 from .group_e2e import grp_e2e_bp
@@ -117,6 +120,9 @@ app.register_blueprint(digest_bp)
 app.register_blueprint(bulk_bp)
 app.register_blueprint(rm_bp)
 app.register_blueprint(themes_bp)
+app.register_blueprint(retention_bp)
+app.register_blueprint(translate_bp)
+app.register_blueprint(dm_threads_bp)
 app.register_blueprint(ws_bp)
 app.register_blueprint(wp_bp)
 app.register_blueprint(grp_e2e_bp)

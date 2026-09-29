@@ -299,6 +299,14 @@
                 <button id="webpush-refresh" class="btn btn-ghost" style="font-size:var(--fs-xs);">Refresh list</button>
                 <div id="webpush-list"></div>
             </div>
+
+            <div class="room-section">
+                <h3>🕐 Retention overrides</h3>
+                <p class="muted" style="font-size:var(--fs-sm);">
+                    Per-room TTL overrides. Blank = use global default.
+                </p>
+                <div id="retention-status"></div>
+            </div>
             <div class="room-section">
                 <h3>🎭 Roles <button id="roles-new" class="btn">+ New role</button>
                     <button id="roles-refresh" class="btn">↻</button></h3>
@@ -422,6 +430,8 @@
 <script src="/static/js/web_push.js"></script>
 <script src="/static/js/wiki_search.js"></script>
 <script src="/static/js/room_theme.js"></script>
+<script src="/static/js/translation.js"></script>
+<script src="/static/js/tabs/room_retention.js"></script>
 <script src="/static/js/app.js"></script>
 </body>
 </html>

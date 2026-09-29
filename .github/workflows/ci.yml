@@ -31,22 +31,23 @@ jobs:
           python -m pip install --upgrade pip wheel
           pip install -e ".[dev,web]"
 
-      - name: Show installed versions
+      - name: Show installed packages
         run: |
           pip list | grep -iE "(flask|pytest|strawberry|jwt|socketio|sqlalchemy|alembic|redis|pywebpush|webauthn|cryptography|openai|yaml|httpx)" || true
 
-      - name: Run tests
-        run: pytest -v --tb=short -x --no-header
+      - name: Run tests (serial, verbose on first failure)
+        run: pytest -v --tb=short
         env:
-          # Ensure clean DB per run
-          DB_PATH: /tmp/ci-test.db
           PYTHONUNBUFFERED: "1"
+          FAST_HASH: "1"
+          RETENTION_ENABLED: "0"
+          BACKGROUND_INTERVAL_SECONDS: "9999"
+          SCHEDULER_INTERVAL_SECONDS: "9999"
 
-      - name: Upload pytest cache on failure
+      - name: Upload artifacts on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: pytest-artifacts-py${{ matrix.python-version }}
-          path: |
-            .pytest_cache/
+          name: pytest-cache-py${{ matrix.python-version }}
+          path: .pytest_cache/
           if-no-files-found: ignore

@@ -38,7 +38,7 @@ def test_retention_clears_expired_invites(client):
     assert deleted.get("room_invites", 0) >= 1
 
 
-def test_retention_disabled_by_default(monkeypatch):
+def test_retention_disabled_by_default(client, monkeypatch):
     """Jobs don't delete anything if TTLs are 0."""
     monkeypatch.delenv("RETENTION_CALC_DAYS", raising=False)
     monkeypatch.delenv("RETENTION_CHAT_DAYS", raising=False)

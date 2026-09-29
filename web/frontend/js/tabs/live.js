@@ -67,6 +67,12 @@ const Live = (() => {
                         bodyEl.classList.add("deleted");
                     } catch (e) { UI.toast("Delete failed: " + e.message, "error"); }
                 },
+                canTranslate: !!window.Translate,
+                onTranslate: () => {
+                    if (window.Translate) {
+                        Translate.picker("chat", msg.id, msg.decrypted || msg.body || "");
+                    }
+                },
                 onViewEdits: () => {
                     MessageActions.showEditHistory(`/api/chat/${currentRoom}/${msg.id}/edits`);
                 },

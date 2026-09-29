@@ -78,3 +78,37 @@ def client(tmp_path, monkeypatch):
 
     with backend_main.app.test_client() as c:
         yield c
+
+
+@pytest.fixture(autouse=True)
+def _ensure_db_ready(tmp_path, monkeypatch):
+    """Ensure the DB is initialized before every test.
+
+    Prevents crashes when a test calls into a module that touches the
+    DB without using the `client` fixture. Sets a fresh per-test DB
+    path and runs init_db + ensure_extras + search FTS init.
+    """
+    # Only set a fresh DB path if not already set by a test.
+    if not os.environ.get("DB_PATH") or os.environ.get("DB_PATH") in ("", ":memory:"):
+        monkeypatch.setenv("DB_PATH", str(tmp_path / "auto-test.db"))
+
+    from web.backend import database
+    try:
+        database.init_db()
+    except Exception:
+        pass
+
+    try:
+        from web.backend.schema_extras import ensure_extras
+        with database.get_db() as conn:
+            ensure_extras(conn)
+    except Exception:
+        pass
+
+    try:
+        from web.backend import search as search_mod
+        search_mod.init_fts()
+    except Exception:
+        pass
+
+    yield

@@ -93,6 +93,16 @@ def run_retention() -> dict:
     except Exception as e:
         log.warning("per-action audit retention failed: %s", e)
 
+    # ---- 3.95 Per-room retention overrides (Phase 84) ----
+    try:
+        from .room_retention import apply_room_overrides
+        with get_db() as conn:
+            per_room = apply_room_overrides(conn)
+        for rid, n in per_room.items():
+            deleted[f"room[{rid}]"] = n
+    except Exception as e:
+        log.warning("per-room retention failed: %s", e)
+
     # ---- 4. Old audit entries ----
     days = _ttl("RETENTION_AUDIT_DAYS", 0)
     if days > 0:
@@ -126,11 +136,14 @@ def run_retention() -> dict:
     # ---- 6. Old device tokens ----
     days = _ttl("RETENTION_DEVICE_DAYS", 270)
     if days > 0:
-        cutoff = (now - timedelta(days=days)).isoformat()
-        with get_db() as conn:
-            cur = conn.execute("DELETE FROM device_tokens WHERE created_at < ?", (cutoff,))
-            if cur.rowcount:
-                deleted["device_tokens"] = cur.rowcount
+        try:
+            cutoff = (now - timedelta(days=days)).isoformat()
+            with get_db() as conn:
+                cur = conn.execute("DELETE FROM device_tokens WHERE created_at < ?", (cutoff,))
+                if cur.rowcount:
+                    deleted["device_tokens"] = cur.rowcount
+        except Exception as e:
+            log.warning("device token purge failed: %s", e)
 
     STATS["last_run"] = now.isoformat(timespec="seconds") + "Z"
     STATS["last_deleted"] = deleted

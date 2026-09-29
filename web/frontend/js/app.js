@@ -20,6 +20,7 @@ const Tab = (() => {
         if (name === "room" && window.Roles) Roles.onShow();
         if (name === "room" && window.Digest) Digest.onShow();
         if (name === "room" && window.WebPush) WebPush.onShow();
+        if (name === "room" && window.RoomRetention) RoomRetention.onShow();
         if (name === "discover" && window.Discover) Discover.onShow();
         if (name === "contacts" && window.Contacts) Contacts.onShow();
         if (name === "bots" && window.Bots) Bots.onShow();
@@ -188,6 +189,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (window.WebPush) WebPush.init();
     if (window.WikiSearch) WikiSearch.init();
     if (window.RoomTheme) RoomTheme.init();
+    if (window.RoomRetention) RoomRetention.init();
     if (window.Groups) Groups.init();
     if (window.DMs) DMs.init();
     if (window.Live) Live.init();

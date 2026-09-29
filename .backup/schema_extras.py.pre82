@@ -471,36 +471,6 @@ EXTRA_TABLES = [
         updated_by INTEGER
     )
     """,
-
-    # ---------- Phase 83 — message translations ----------
-    """
-    CREATE TABLE IF NOT EXISTS message_translations (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        message_kind TEXT NOT NULL,
-        message_id INTEGER NOT NULL,
-        target_lang TEXT NOT NULL,
-        source_lang TEXT,
-        translated_body TEXT NOT NULL,
-        provider TEXT NOT NULL DEFAULT 'openai',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE (user_id, message_kind, message_id, target_lang)
-    )
-    """,
-    "CREATE INDEX IF NOT EXISTS idx_translations_user ON message_translations(user_id, created_at DESC)",
-    "CREATE INDEX IF NOT EXISTS idx_translations_msg ON message_translations(message_kind, message_id)",
-
-    # ---------- Phase 84 — room retention overrides ----------
-    """
-    CREATE TABLE IF NOT EXISTS room_retention_overrides (
-        room_id TEXT PRIMARY KEY,
-        message_days INTEGER,
-        chat_days INTEGER,
-        audit_days INTEGER,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_by INTEGER
-    )
-    """,
 ]
 
 
@@ -520,9 +490,6 @@ EXTRA_COLUMNS = {
         ("kind", "TEXT NOT NULL DEFAULT 'file'"),
     ],
     "group_messages": [
-        ("parent_id", "INTEGER"),
-    ],
-    "dm_messages": [
         ("parent_id", "INTEGER"),
     ],
 }

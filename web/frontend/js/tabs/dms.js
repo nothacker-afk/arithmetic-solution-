@@ -220,6 +220,12 @@ const DMs = (() => {
                         body.classList.add("deleted");
                     } catch (e) { UI.toast("Delete failed: " + e.message, "error"); }
                 },
+                canTranslate: !!window.Translate,
+                onTranslate: () => {
+                    if (window.Translate) {
+                        Translate.picker("chat", msg.id, msg.decrypted || msg.body || "");
+                    }
+                },
                 onViewEdits: () => {
                     MessageActions.showEditHistory(
                         `/api/dms/threads/${currentThreadId}/messages/${m.id}/edits`);
