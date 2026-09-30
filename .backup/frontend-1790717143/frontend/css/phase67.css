@@ -1,0 +1,55 @@
+/* Phases 67-72 additions */
+
+.wc-comment {
+    padding: 8px 10px;
+    background: var(--bg-0);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    margin-bottom: 6px;
+    font-size: var(--fs-sm);
+}
+.wc-reply {
+    padding: 4px 0;
+    border-left: 2px solid var(--border);
+    padding-left: 8px;
+    margin-top: 4px;
+    font-size: var(--fs-sm);
+}
+
+.device-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    background: var(--bg-0);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    margin-bottom: 4px;
+}
+
+/* Sync indicator on header */
+#device-sync-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: var(--fs-xs);
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    cursor: pointer;
+}
+#device-sync-badge:hover { background: var(--bg-3); }
+
+/* Audit retention admin card */
+.retention-policy-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+    font-size: var(--fs-sm);
+}
+.retention-policy-row code { color: var(--accent); }

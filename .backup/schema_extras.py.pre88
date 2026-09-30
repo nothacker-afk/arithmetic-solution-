@@ -550,36 +550,6 @@ EXTRA_TABLES = [
     )
     """,
     "CREATE INDEX IF NOT EXISTS idx_webhook_deliv ON webhook_deliveries(webhook_id, created_at DESC)",
-
-    # ---------- Phase 88 — saved calculations ----------
-    """
-    CREATE TABLE IF NOT EXISTS saved_calculations (
-        id TEXT PRIMARY KEY,
-        user_id INTEGER,
-        expression TEXT NOT NULL,
-        result TEXT NOT NULL,
-        steps TEXT,
-        is_public INTEGER NOT NULL DEFAULT 0,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        views INTEGER NOT NULL DEFAULT 0
-    )
-    """,
-    "CREATE INDEX IF NOT EXISTS idx_savedcalc_user ON saved_calculations(user_id, created_at DESC)",
-    "CREATE INDEX IF NOT EXISTS idx_savedcalc_public ON saved_calculations(is_public, created_at DESC)",
-
-    # ---------- Phase 89 — solver audit (optional) ----------
-    """
-    CREATE TABLE IF NOT EXISTS solver_history (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER,
-        equation TEXT NOT NULL,
-        variable TEXT NOT NULL,
-        solution TEXT,
-        steps TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-    """,
-    "CREATE INDEX IF NOT EXISTS idx_solver_user ON solver_history(user_id, created_at DESC)",
 ]
 
 

@@ -1,0 +1,18 @@
+/* Phases 85-87 */
+
+.global-search-bar {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+#gs-results .feed-item,
+#webhooks-list .contact-row {
+    border-left: 3px solid var(--accent);
+}
+
+.webhook-url {
+    font-family: var(--font-mono);
+    word-break: break-all;
+    font-size: var(--fs-sm);
+}

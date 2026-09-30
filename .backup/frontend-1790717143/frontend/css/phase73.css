@@ -1,0 +1,60 @@
+/* Phases 73-78 additions */
+
+.bulk-bar {
+    position: fixed;
+    bottom: var(--sp-4);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg-1);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius);
+    padding: var(--sp-2) var(--sp-3);
+    box-shadow: var(--shadow-lg);
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    z-index: 800;
+}
+.bulk-count {
+    font-size: var(--fs-sm);
+    color: var(--accent);
+    font-weight: 600;
+    min-width: 80px;
+}
+
+.msg-wrap.bulk-selected {
+    background: var(--accent-soft);
+    border-left: 3px solid var(--accent);
+    padding-left: 6px;
+}
+
+.bulk-checkbox {
+    accent-color: var(--accent);
+}
+
+.role-perm-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    font-size: var(--fs-sm);
+}
+
+/* Event reminder row */
+.reminder-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    background: var(--bg-0);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    margin-bottom: 4px;
+}
+
+/* Digest card */
+.digest-card {
+    background: var(--bg-0);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: var(--sp-3);
+}

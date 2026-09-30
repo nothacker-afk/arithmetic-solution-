@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en" class="theme-dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Arithmetic Super App</title>
+<meta name="theme-color" content="#38bdf8" />
+<link rel="manifest" href="/manifest.json" />
+<link rel="apple-touch-icon" href="/static/icon-192.svg" />
+<link rel="stylesheet" href="/static/css/design.css" />
+<link rel="stylesheet" href="/static/css/components.css" />
+<link rel="stylesheet" href="/static/css/chat-addons.css" />
+<link rel="stylesheet" href="/static/css/phase41.css" />
+<link rel="stylesheet" href="/static/css/phase46.css" />
+<link rel="stylesheet" href="/static/css/phase51.css" />
+<link rel="stylesheet" href="/static/css/phase56.css" />
+<link rel="stylesheet" href="/static/css/phase61.css" />
+<link rel="stylesheet" href="/static/css/phase67.css" />
+<link rel="stylesheet" href="/static/css/phase73.css" />
+<link rel="stylesheet" href="/static/css/phase79.css" />
+<link rel="stylesheet" href="/static/css/phase85.css" />
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script src="/static/crypto.js"></script>
+<script src="/static/i18n.js"></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<div class="app-shell">
+    <header class="app-header">
+        <h1 class="app-title">Arithmetic Super App</h1>
+        <div class="header-actions">
+            <span id="status-badge" class="hidden" title="Set status">🟢</span>
+            <span id="device-sync-badge" title="Click to see devices">💻</span>
+            <span id="user-label" class="muted">Guest</span>
+            <button id="passkey-btn" class="btn btn-icon hidden" title="Sign in with passkey">🔑</button>
+            <button id="install-btn" class="btn btn-icon hidden" title="Install app">⤓</button>
+            <button id="hotkeys-help" class="btn btn-icon" title="Keyboard shortcuts (?)">?</button>
+            <button id="theme-btn" class="btn btn-icon" title="Toggle theme">🌓</button>
+            <button id="lang-btn" class="btn btn-icon" title="Cycle language">EN</button>
+            <button id="auth-btn" class="btn">Login</button>
+        </div>
+    </header>
+    <nav class="tabs" role="tablist">
+        <div class="tab active" data-tab="basic" role="tab">Basic</div>
+        <div class="tab" data-tab="scientific" role="tab">Scientific</div>
+        <div class="tab" data-tab="matrix" role="tab">Matrix</div>
+        <div class="tab" data-tab="ai" role="tab">AI</div>
+        <div class="tab" data-tab="realtime" role="tab">Live</div>
+        <div class="tab" data-tab="history" role="tab">History</div>
+        <div class="tab" data-tab="search" role="tab">Search</div>
+        <div class="tab" data-tab="dms" role="tab">DMs</div>
+        <div class="tab" data-tab="groups" role="tab">Groups</div>
+        <div class="tab" data-tab="discover" role="tab">Discover</div>
+        <div class="tab" data-tab="contacts" role="tab">Contacts</div>
+        <div class="tab" data-tab="bots" role="tab">Bots</div>
+        <div class="tab" data-tab="room" role="tab">Room</div>
+    </nav>
+    <main id="main" class="card">
+        <section class="tab-panel active" id="panel-basic" role="tabpanel">
+            <div class="field"><label for="basic-op">Operation</label>
+                <select id="basic-op" class="select">
+                    <option value="add">Add (+)</option>
+                    <option value="subtract">Subtract (−)</option>
+                    <option value="multiply">Multiply (×)</option>
+                    <option value="divide">Divide (÷)</option>
+                    <option value="power">Power (^)</option>
+                    <option value="modulo">Modulo (%)</option>
+                    <option value="floor_divide">Floor Divide (//)</option>
+                </select></div>
+            <div class="field-row">
+                <div class="field"><label for="basic-a">a</label><input id="basic-a" class="input" type="number" step="any" value="10" /></div>
+                <div class="field"><label for="basic-b">b</label><input id="basic-b" class="input" type="number" step="any" value="5" /></div>
+            </div>
+            <button id="basic-calc" class="btn btn-primary">Calculate</button>
+        </section>
+        <section class="tab-panel" id="panel-scientific" role="tabpanel">
+            <div class="field"><label for="sci-op">Operation</label>
+                <select id="sci-op" class="select">
+                    <option value="sqrt">Square Root</option>
+                    <option value="cbrt">Cube Root</option>
+                    <option value="log10">Log base 10</option>
+                    <option value="sin">Sine</option>
+                    <option value="cos">Cosine</option>
+                    <option value="tan">Tangent</option>
+                    <option value="factorial">Factorial</option>
+                    <option value="absolute">Absolute Value</option>
+                </select></div>
+            <div class="field"><label for="sci-x">x</label><input id="sci-x" class="input" type="number" step="any" value="16" /></div>
+            <button id="sci-calc" class="btn btn-primary">Calculate</button>
+        </section>
+        <section class="tab-panel" id="panel-matrix" role="tabpanel">
+            <div class="field"><label for="matrix-op">Operation</label>
+                <select id="matrix-op" class="select">
+                    <option value="matrix_add">Add</option>
+                    <option value="matrix_subtract">Subtract</option>
+                    <option value="matrix_multiply">Multiply</option>
+                    <option value="matrix_transpose">Transpose (A only)</option>
+                </select></div>
+            <div class="field"><label for="matrix-a">Matrix A (e.g. 1,2;3,4)</label><input id="matrix-a" class="input" value="1,2;3,4" /></div>
+            <div class="field"><label for="matrix-b">Matrix B</label><input id="matrix-b" class="input" value="5,6;7,8" /></div>
+            <button id="matrix-calc" class="btn btn-primary">Calculate</button>
+        </section>
+        <section class="tab-panel" id="panel-ai" role="tabpanel">
+            <div class="field"><label for="ai-input">Ask in plain English</label>
+                <input id="ai-input" class="input" placeholder="e.g. what is 15% of 240" /></div>
+            <button id="ai-solve" class="btn btn-primary">Solve</button>
+        </section>
+        <section class="tab-panel" id="panel-realtime" role="tabpanel">
+            <div class="field-row">
+                <div class="field"><label for="rt-room">Room</label><input id="rt-room" class="input" value="demo-room" /></div>
+                <div class="field"><label for="rt-user">Display name</label><input id="rt-user" class="input" value="guest" /></div>
+            </div>
+            <div class="field-row">
+                <button id="rt-join" class="btn btn-primary">Join</button>
+                <button id="rt-leave" class="btn">Leave</button>
+            </div>
+            <p id="rt-status" class="muted">Not connected.</p>
+            <div id="rt-avatars"></div>
+            <hr style="border:none;border-top:1px solid var(--border);margin:var(--sp-4) 0;" />
+            <div class="export-bar">
+                <button id="rt-export-md" class="btn">⬇ Markdown</button>
+                <button id="rt-export-html" class="btn">⬇ HTML / PDF</button>
+            </div>
+            <h3>Chat</h3>
+            <div class="field">
+                <label for="rt-e2e"><input id="rt-e2e" type="checkbox" style="width:auto;margin-right:6px;" /> E2E encrypt</label>
+                <input id="rt-passphrase" class="input hidden" type="password" placeholder="Room passphrase" />
+            </div>
+            <div id="rt-chat-log" class="chat-log"></div>
+            <p id="rt-typing" class="muted" style="height:1.2em;"></p>
+            <div class="field-row">
+                <input id="rt-chat-input" class="input" placeholder="Type a message…" />
+                <button id="rt-mic" class="btn" style="flex:0 0 auto;" title="Record voice">🎤 Voice</button>
+                <button id="rt-screen" class="btn" style="flex:0 0 auto;" title="Share screen">📺 Share</button>
+                <button id="bulk-enter" class="btn" style="flex:0 0 auto;" title="Select messages">☑ Select</button>
+                <button id="rt-send" class="btn btn-primary" style="flex:0 0 auto;">Send</button>
+            </div>
+            <h3 class="mt-4">Files</h3>
+            <div id="rt-file-list"></div>
+            
+            <h3 class="mt-4">Media gallery</h3>
+            <div class="chip-row">
+                <div class="chip active" data-media-filter="all">All</div>
+                <div class="chip" data-media-filter="file">Files</div>
+                <div class="chip" data-media-filter="voice">Voice</div>
+                <button id="media-refresh" class="btn btn-ghost btn-icon" style="margin-left:auto;">↻</button>
+            </div>
+            <div id="media-grid" class="media-grid"></div>
+
+            <h3 class="mt-4">Live feed</h3>
+            <div id="rt-feed"></div>
+        </section>
+
+        <section class="tab-panel" id="panel-search" role="tabpanel">
+            <div class="room-section">
+                <h3>🌐 Global search</h3>
+                <div class="global-search-bar">
+                    <input id="gs-input" class="input" placeholder="Search rooms, DMs, groups, wiki, calculations…" />
+                    <button id="gs-go" class="btn btn-primary">Search</button>
+                </div>
+                <div id="gs-results"></div>
+            </div>
+
+            <div class="field">
+                <label for="search-input">Search</label>
+                <input id="search-input" class="input" placeholder="Type to search calculations and chat…" />
+            </div>
+            <div class="field-row">
+                <div class="field">
+                    <label for="search-scope">Scope</label>
+                    <select id="search-scope" class="select">
+                        <option value="all">Everything</option>
+                        <option value="calculations">Calculations only</option>
+                        <option value="chat">Chat only</option>
+                    </select>
+                </div>
+            </div>
+            <button id="search-go" class="btn btn-primary">Search</button>
+            <p id="search-engine" class="muted mt-4" style="font-size:var(--fs-sm);"></p>
+            <div id="search-results" class="mt-4"></div>
+        </section>
+
+        <section class="tab-panel" id="panel-dms" role="tabpanel">
+            <div class="field-row">
+                <div class="field"><label for="dm-new-user">Start conversation with</label>
+                    <input id="dm-new-user" class="input" placeholder="username" /></div>
+                <button id="dm-start" class="btn btn-primary" style="align-self:flex-end;margin-bottom:var(--sp-3);">Start</button>
+            </div>
+            <div class="field">
+                <label for="dm-passphrase">Shared passphrase (E2E)</label>
+                <input id="dm-passphrase" class="input" type="password" placeholder="Agree on this out-of-band" />
+            </div>
+            <h3>Conversations</h3>
+            <button id="dm-refresh" class="btn btn-ghost" style="margin-bottom:var(--sp-2);">Refresh</button>
+            <div id="dm-threads"></div>
+            <div id="dm-conversation" class="hidden mt-4">
+                <h3>Chat with <span id="dm-conversation-title"></span></h3>
+                <div class="export-bar">
+                    <button id="dm-export-md" class="btn">⬇ Markdown</button>
+                    <button id="dm-export-html" class="btn">⬇ HTML / PDF</button>
+                </div>
+                <div id="dm-typing"></div>
+                <div id="dm-messages" class="chat-log" style="max-height:300px;"></div>
+                <div class="field-row mt-2">
+                    <input id="dm-input" class="input" placeholder="Type a message…" />
+                    <button id="dm-mic" class="btn" style="flex:0 0 auto;" title="Voice message">🎤</button>
+                    <button id="dm-send" class="btn btn-primary" style="flex:0 0 auto;">Send</button>
+                </div>
+            </div>
+        </section>
+
+
+        <section class="tab-panel" id="panel-groups" role="tabpanel">
+            <div class="bot-create-row">
+                <button id="group-new" class="btn btn-primary">+ New group</button>
+                <button id="group-refresh" class="btn">↻</button>
+            </div>
+            <h3>Groups</h3>
+            <div id="groups-list"></div>
+            <div id="group-conversation" class="hidden mt-4">
+                <h3>Chat with <span id="group-conversation-title"></span></h3>
+                <div id="group-messages" class="chat-log" style="max-height:300px;"></div>
+                <div class="field-row mt-2">
+                    <input id="group-input" class="input" placeholder="Type a message…" />
+                    <button id="group-send" class="btn btn-primary" style="flex:0 0 auto;">Send</button>
+                </div>
+            </div>
+        </section>
+        <section class="tab-panel" id="panel-discover" role="tabpanel">
+            <div class="discover-filters">
+                <input id="discover-q" class="input" placeholder="Search rooms…" />
+                <input id="discover-tag" class="input" placeholder="tag" style="max-width:110px;" />
+                <button id="discover-refresh" class="btn btn-primary">Search</button>
+            </div>
+            <div id="discover-list"></div>
+        </section>
+
+        <section class="tab-panel" id="panel-contacts" role="tabpanel">
+            <div class="bot-create-row">
+                <input id="contact-username" class="input" placeholder="Add by username" />
+                <button id="contact-add" class="btn btn-primary">Add</button>
+                <button id="contacts-refresh" class="btn">↻</button>
+            </div>
+            <h3>Contacts</h3>
+            <div id="contacts-list"></div>
+            <h3 class="mt-4">Block list</h3>
+            <div class="bot-create-row">
+                <input id="block-username" class="input" placeholder="Block a username" />
+                <button id="block-add" class="btn btn-danger">Block</button>
+            </div>
+            <div id="blocks-list"></div>
+        </section>
+
+        <section class="tab-panel" id="panel-bots" role="tabpanel">
+            <div class="bot-create-row">
+                <input id="bot-room" class="input" placeholder="room name" />
+                <input id="bot-name" class="input" placeholder="bot name" />
+                <button id="bot-create" class="btn btn-primary">Create</button>
+                <button id="bots-refresh" class="btn">↻</button>
+            </div>
+            <p class="muted" style="font-size:var(--fs-sm);">
+                Only the room owner can create a bot. Commands: <code>!help</code> ·
+                <code>!echo</code> · <code>!time</code> · <code>!roll</code> · <code>!8ball</code>
+            </p>
+            <div id="bots-list"></div>
+        </section>
+
+        <section class="tab-panel" id="panel-room" role="tabpanel">
+            <div class="field">
+                <label for="room-tab-room">Room</label>
+                <input id="room-tab-room" class="input" placeholder="room name" />
+            </div>
+            <button id="room-refresh" class="btn btn-primary">Load</button>
+
+            <div class="room-section mt-4">
+                <h3>📌 Pins</h3>
+                <div id="room-pins-list"></div>
+            </div>
+
+
+
+
+
+            <div class="room-section">
+                <h3>🔍 Wiki search</h3>
+                <div class="bot-create-row">
+                    <input id="wikisearch-input" class="input" placeholder="Search wiki pages…" />
+                    <input id="wikisearch-room" class="input" placeholder="room (optional)" style="max-width:140px;" />
+                    <button id="wikisearch-go" class="btn btn-primary">Search</button>
+                </div>
+                <div id="wikisearch-results"></div>
+            </div>
+
+            <div class="room-section">
+                <h3>🎨 Room theme <button id="room-theme-edit" class="btn">Edit theme</button></h3>
+                <p class="muted" style="font-size:var(--fs-sm);">
+                    Custom accent colors, banner, and emoji for this room.
+                </p>
+            </div>
+
+            <div class="room-section">
+                <h3>🔔 Push notifications
+                    <span style="display:flex;gap:4px;">
+                        <button id="webpush-enable" class="btn">Enable</button>
+                        <button id="webpush-test" class="btn">Test</button>
+                        <button id="webpush-disable" class="btn btn-danger">Disable</button>
+                    </span>
+                </h3>
+                <button id="webpush-refresh" class="btn btn-ghost" style="font-size:var(--fs-xs);">Refresh list</button>
+                <div id="webpush-list"></div>
+            </div>
+
+
+            <div class="room-section">
+                <h3>🪝 Webhooks <button id="webhooks-new" class="btn">+ New</button>
+                    <button id="webhooks-refresh" class="btn">↻</button></h3>
+                <p class="muted" style="font-size:var(--fs-sm);">
+                    POST signed JSON to your URLs when events happen.
+                </p>
+                <div id="webhooks-list"></div>
+            </div>
+            <div class="room-section">
+                <h3>🕐 Retention overrides</h3>
+                <p class="muted" style="font-size:var(--fs-sm);">
+                    Per-room TTL overrides. Blank = use global default.
+                </p>
+                <div id="retention-status"></div>
+            </div>
+            <div class="room-section">
+                <h3>🎭 Roles <button id="roles-new" class="btn">+ New role</button>
+                    <button id="roles-refresh" class="btn">↻</button></h3>
+                <p class="muted" style="font-size:var(--fs-sm);">
+                    Custom roles with fine-grained permissions.
+                </p>
+                <div id="roles-list"></div>
+            </div>
+
+            <div class="room-section">
+                <h3>📧 Email digest</h3>
+                <div id="digest-status"></div>
+            </div>
+            <div class="room-section">
+                <h3>💻 Devices <button id="devices-refresh" class="btn">↻</button></h3>
+                <p class="muted" style="font-size:var(--fs-sm);">
+                    All devices signed in to this account. Read state syncs across them.
+                </p>
+                <div id="devices-list"></div>
+            </div>
+            <div class="room-section">
+                <h3>🎨 Emoji packs <button id="emoji-packs-new" class="btn">+ New pack</button>
+                    <button id="emoji-packs-refresh" class="btn">↻</button></h3>
+                <div id="emoji-packs-list"></div>
+            </div>
+
+            <div class="room-section">
+                <h3>🔗 Guest links <button id="guest-link-create" class="btn">+ Create</button></h3>
+                <p class="muted" style="font-size:var(--fs-sm);">
+                    Share a link that lets guests join without an account.
+                    Guests get read-only access unless you enable write.
+                </p>
+            </div>
+
+            <div class="room-section">
+                <h3>📦 Archives</h3>
+                <p class="muted" style="font-size:var(--fs-sm);">
+                    Download a static snapshot of the room as a ZIP.
+                </p>
+                <button id="archive-create" class="btn btn-primary">Download archive</button>
+                <div id="archive-list" class="mt-2"></div>
+            </div>
+            <div class="room-section">
+                <h3>📖 Wiki <button id="room-wiki-new" class="btn">+ New page</button></h3>
+                <div id="room-wiki-list"></div>
+            </div>
+
+            <div class="room-section">
+                <h3>📅 Events <button id="room-event-new" class="btn">+ New event</button></h3>
+                <div id="room-events-list"></div>
+            </div>
+
+            <div class="room-section">
+                <h3>🔊 Voice channels
+                    <span style="display:flex;gap:4px;">
+                        <button id="room-vc-mute" class="btn">Mute</button>
+                        <button id="room-vc-leave" class="btn">Leave</button>
+                    </span>
+                </h3>
+                <div id="room-vc-list"></div>
+            </div>
+        </section>
+        <section class="tab-panel" id="panel-history" role="tabpanel">
+            <div id="history-list"></div>
+            <button id="history-refresh" class="btn mt-4">Refresh</button>
+            <h3 class="mt-4">Scheduled messages</h3>
+            <button id="sched-open" class="btn btn-primary mt-2">+ Schedule</button>
+            <button id="sched-refresh" class="btn mt-2">↻</button>
+            <div id="sched-list" class="mt-2"></div>
+
+        </section>
+        <div id="result" class="result-panel mt-4">Ready.</div>
+    </main>
+    <footer class="muted text-center mt-4" style="font-size:var(--fs-xs);">
+        Press <span class="cmdk-kbd">Ctrl</span>+<span class="cmdk-kbd">K</span> ·
+        <a href="/admin">Admin</a>
+    </footer>
+</div>
+<script src="/static/js/api.js"></script>
+<script src="/static/js/ui.js"></script>
+<script src="/static/js/theme.js"></script>
+<script src="/static/js/i18n_client.js"></script>
+<script src="/static/js/commands.js"></script>
+<script src="/static/js/tabs/basic.js"></script>
+<script src="/static/js/tabs/scientific.js"></script>
+<script src="/static/js/tabs/matrix.js"></script>
+<script src="/static/js/tabs/ai.js"></script>
+<script src="/static/js/tabs/history.js"></script>
+<script src="/static/js/tabs/live.js"></script>
+<script src="/static/js/tabs/search.js"></script>
+<script src="/static/js/tabs/dms.js"></script>
+<script src="/static/js/presence.js"></script>
+<script src="/static/js/offline.js"></script>
+<script src="/static/js/pwa.js"></script>
+<script src="/static/js/passkey.js"></script>
+<script src="/static/js/voice_recorder.js"></script>
+<script src="/static/js/reactions.js"></script>
+<script src="/static/js/threads.js"></script>
+<script src="/static/js/export_ui.js"></script>
+<script src="/static/js/emoji_autocomplete.js"></script>
+<script src="/static/js/message_actions.js"></script>
+<script src="/static/js/tabs/contacts.js"></script>
+<script src="/static/js/tabs/discover.js"></script>
+<script src="/static/js/tabs/bots.js"></script>
+<script src="/static/js/tabs/media.js"></script>
+<script src="/static/js/scheduled.js"></script>
+<script src="/static/js/tabs/room.js"></script>
+<script src="/static/js/status.js"></script>
+<script src="/static/js/tabs/groups.js"></script>
+<script src="/static/js/hotkeys.js"></script>
+<script src="/static/js/sse_client.js"></script>
+<script src="/static/js/tabs/emoji.js"></script>
+<script src="/static/js/tabs/guest_links.js"></script>
+<script src="/static/js/group_e2e.js"></script>
+<script src="/static/js/tabs/devices.js"></script>
+<script src="/static/js/tabs/wiki_comments.js"></script>
+<script src="/static/js/bulk_select.js"></script>
+<script src="/static/js/tabs/reminders.js"></script>
+<script src="/static/js/tabs/roles.js"></script>
+<script src="/static/js/tabs/digest.js"></script>
+<script src="/static/js/web_push.js"></script>
+<script src="/static/js/wiki_search.js"></script>
+<script src="/static/js/room_theme.js"></script>
+<script src="/static/js/translation.js"></script>
+<script src="/static/js/tabs/room_retention.js"></script>
+<script src="/static/js/global_search.js"></script>
+<script src="/static/js/forwarding.js"></script>
+<script src="/static/js/tabs/webhooks.js"></script>
+<script src="/static/js/app.js"></script>
+</body>
+</html>

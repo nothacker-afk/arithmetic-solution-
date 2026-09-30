@@ -1,0 +1,35 @@
+/* Phases 79-81 additions */
+
+.room-banner {
+    height: 90px;
+    border-radius: var(--radius-lg);
+    background-size: cover;
+    background-position: center;
+    margin-bottom: var(--sp-4);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+}
+
+.room-emoji {
+    font-size: 1.4em;
+    margin-left: 8px;
+    vertical-align: middle;
+}
+
+/* Wiki search results */
+#wikisearch-results .feed-item {
+    border-left: 3px solid var(--accent);
+}
+
+/* Web push test button spacing */
+#webpush-test,
+#webpush-enable,
+#webpush-disable {
+    margin-right: 4px;
+}
+
+/* Theme editor preview indicator */
+#rt-accent,
+#rt-accent2 {
+    font-family: var(--font-mono);
+}

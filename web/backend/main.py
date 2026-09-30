@@ -44,6 +44,8 @@ from .bulk_ops import bulk_bp
 from .event_reminders import rm_bp
 from .room_themes import themes_bp
 from .room_retention import retention_bp
+from .calc_api import calc_bp
+from .calc_share import share_bp as calc_share_bp
 from .webhooks import webhooks_bp
 from .forwarding import fwd_bp
 from .global_search import gs_bp
@@ -124,6 +126,8 @@ app.register_blueprint(bulk_bp)
 app.register_blueprint(rm_bp)
 app.register_blueprint(themes_bp)
 app.register_blueprint(retention_bp)
+app.register_blueprint(calc_bp)
+app.register_blueprint(calc_share_bp)
 app.register_blueprint(webhooks_bp)
 app.register_blueprint(fwd_bp)
 app.register_blueprint(gs_bp)
