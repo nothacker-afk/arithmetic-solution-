@@ -1,8 +1,2 @@
-/* Phases 88-90 */
-.plot-wrap {
-    background: var(--bg-0);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    overflow: hidden;
-}
+.plot-wrap { background: var(--bg-0); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
 .plot-wrap canvas { display: block; }

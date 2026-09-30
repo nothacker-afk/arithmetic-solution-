@@ -192,6 +192,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (window.RoomTheme) RoomTheme.init();
     if (window.RoomRetention) RoomRetention.init();
     if (window.GlobalSearch) GlobalSearch.init();
+        if (window.CalcShare) CalcShare.init();
     if (window.Webhooks) Webhooks.init();
     if (window.Groups) Groups.init();
     if (window.DMs) DMs.init();
