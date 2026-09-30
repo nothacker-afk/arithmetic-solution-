@@ -197,42 +197,38 @@ def _convert_units(expr: str):
 def _normalize_implicit_multiplication(expr: str) -> str:
     """Insert explicit '*' for common implicit-multiplication forms.
 
-    Handles:
-        2x       → 2*x
-        2(x+1)   → 2*(x+1)
-        (x+1)2   → (x+1)*2
-        (x+1)(y) → (x+1)*(y)
-        x(y+1)   → x*(y+1)     (unless x is a known function name)
+    Handles: 2x, 2(x+1), (x+1)2, (x+1)(y), x(y+1)
+    Preserves: sin(x), log10(x), sqrt(y), and any known function call.
 
-    Does NOT touch:
-        sin(x), log10(x), sqrt(y)  — function calls
-        log10                      — identifier with trailing digits
+    Uses lookbehind `(?<![a-zA-Z_0-9.])` so we never split existing
+    identifiers (e.g. the "10" inside "log10" is protected).
     """
-    # 1. Number followed by identifier: "2x" → "2*x"
-    #    Negative lookbehind prevents matching inside identifiers like "log10x"
+    # Rule 1: number + full identifier: "2x" → "2*x", "5 km" → "5*km"
     expr = _re.sub(
-        r"(?<![a-zA-Z_0-9])(\d+(?:\.\d+)?)\s*([a-zA-Z_])",
+        r"(?<![a-zA-Z_0-9.])(\d+(?:\.\d+)?)\s*([a-zA-Z_][a-zA-Z_0-9]*)",
         r"\1*\2",
         expr,
     )
 
-    # 2. Number followed by open paren: "2(x" → "2*(x"
-    expr = _re.sub(r"(\d)\s*\(", r"\1*(", expr)
+    # Rule 2: number + open paren: "2(" → "2*(" — lookbehind protects log10(
+    expr = _re.sub(
+        r"(?<![a-zA-Z_0-9.])(\d+(?:\.\d+)?)\s*\(",
+        r"\1*(",
+        expr,
+    )
 
-    # 3. Close paren followed by identifier/digit/paren: ")x" → ")*x"
+    # Rule 3: close paren + ident/digit/paren: ")x" → ")*x"
     expr = _re.sub(r"\)\s*([a-zA-Z_0-9(])", r")*\1", expr)
 
-    # 4. Identifier followed by open paren (not a function call)
+    # Rule 4: identifier + open paren — keep function calls intact
     def _maybe_mul(m):
         ident = m.group(1)
         if ident in _FUNCTIONS:
-            return m.group(0)  # keep sin(x), log10(x), etc.
+            return m.group(0)
         return f"{ident}*("
-
     expr = _re.sub(r"([a-zA-Z_][a-zA-Z_0-9]*)\s*\(", _maybe_mul, expr)
 
     return expr
-
 
 def evaluate(expression: str, extra_vars: Optional[Dict[str, float]] = None) -> dict:
     """Evaluate an expression and return a dict with steps."""
@@ -247,8 +243,8 @@ def evaluate(expression: str, extra_vars: Optional[Dict[str, float]] = None) -> 
     expr = _re.sub(r"\bmod\b", "%", expr, flags=_re.IGNORECASE)
     expr = _re.sub(r"√", "sqrt", expr)
 
-    expr = _normalize_implicit_multiplication(expr)
     expr, unit_steps = _convert_units(expr)
+    expr = _normalize_implicit_multiplication(expr)
 
     variables = dict(CONSTANTS)
     if extra_vars:
