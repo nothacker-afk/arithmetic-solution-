@@ -1,2 +1,1 @@
-.plot-wrap { background: var(--bg-0); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
-.plot-wrap canvas { display: block; }
+.plot-wrap{background:var(--bg-0);border:1px solid var(--border);border-radius:6px}

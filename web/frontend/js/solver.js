@@ -1,17 +1,12 @@
 const Solver = (() => {
   function open() {
     const b = document.createElement("div");
-    b.innerHTML = '<div class="field"><label>Equation</label><input id="sv-eq" class="input mono" placeholder="2x+5=15"/></div><button id="sv-run" class="btn btn-primary btn-block">Solve</button><div id="sv-out" class="mt-4"></div>';
+    b.innerHTML = "<input id=sv-eq class=input placeholder=2x+5=15><button id=sv-run class=\"btn btn-primary\">Solve</button><div id=sv-out></div>";
     UI.modal({title:"Solve equation",body:b,actions:[{label:"Close"}]});
-    b.querySelector("#sv-run").addEventListener("click", async () => {
-      const eq = b.querySelector("#sv-eq").value.trim();
-      const out = b.querySelector("#sv-out");
-      out.textContent = "Solving…";
-      try {
-        const d = await API.post("/api/calc/solve",{equation:eq,variable:"x"});
-        out.textContent = d.solution === null ? d.message : `x = ${d.solution}`;
-      } catch(e) { out.textContent = "Error: " + e.message; }
-    });
+    b.querySelector("#sv-run").onclick = async () => {
+      const d = await API.post("/api/calc/solve",{equation:b.querySelector("#sv-eq").value,variable:"x"});
+      b.querySelector("#sv-out").textContent = d.solution===null?d.message:("x = "+d.solution);
+    };
   }
   return {open};
 })();
